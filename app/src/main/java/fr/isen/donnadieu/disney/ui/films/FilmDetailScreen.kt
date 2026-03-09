@@ -42,40 +42,67 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
         .replace("$", "").replace("[", "").replace("]", "")
 
     LaunchedEffect(filmKey) {
-        FirebaseDatabase.getInstance().reference
-            .child("user_films")
+        val db = FirebaseDatabase.getInstance().reference
+
+        // Étape 1 : récupère les UIDs depuis /user_films
+        db.child("user_films")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val dvdList  = mutableListOf<String>()
-                    val sellList = mutableListOf<String>()
+                    val dvdUids  = mutableListOf<String>()
+                    val sellUids = mutableListOf<String>()
+
                     for (userSnap in snapshot.children) {
                         val status = userSnap.child(filmKey).child("status")
                             .getValue(String::class.java)
-                        val name = userSnap.child("username").getValue(String::class.java)
-                            ?: userSnap.child("email").getValue(String::class.java)
-                            ?: userSnap.key
-                            ?: "Utilisateur inconnu"
+                        val uid = userSnap.key ?: continue
                         when (status) {
-                            "owned"        -> dvdList.add(name)
-                            "want_to_sell" -> sellList.add(name)
+                            "owned"        -> dvdUids.add(uid)
+                            "want_to_sell" -> sellUids.add(uid)
                         }
                     }
-                    ownersOnDvd         = dvdList
-                    ownersWantingToSell = sellList
-                    isLoading = false
+
+                    val allUids = (dvdUids + sellUids).distinct()
+
+                    // Aucun résultat → on arrête
+                    if (allUids.isEmpty()) {
+                        isLoading = false
+                        return
+                    }
+
+                    // Étape 2 : résout l'email de chaque UID via /users/{uid}/email
+                    val resolvedNames = mutableMapOf<String, String>()
+                    var remaining = allUids.size
+
+                    for (uid in allUids) {
+                        db.child("users").child(uid)
+                            .addListenerForSingleValueEvent(object : ValueEventListener {
+                                override fun onDataChange(snap: DataSnapshot) {
+                                    resolvedNames[uid] =
+                                        snap.child("email").getValue(String::class.java)
+                                            ?: snap.child("username").getValue(String::class.java)
+                                                    ?: uid  // fallback sur l'UID si rien trouvé
+                                    remaining--
+                                    if (remaining == 0) {
+                                        ownersOnDvd         = dvdUids.map { resolvedNames[it] ?: it }
+                                        ownersWantingToSell = sellUids.map { resolvedNames[it] ?: it }
+                                        isLoading = false
+                                    }
+                                }
+                                override fun onCancelled(error: DatabaseError) {
+                                    remaining--
+                                    if (remaining == 0) isLoading = false
+                                }
+                            })
+                    }
                 }
                 override fun onCancelled(error: DatabaseError) { isLoading = false }
             })
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Beige100)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-            // ── Header avec dégradé + bouton retour ───────────────────
+            // ── Header ────────────────────────────────────────────────
             item {
                 Box(
                     modifier = Modifier
@@ -83,7 +110,6 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                         .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
                         .padding(top = 48.dp, bottom = 32.dp, start = 20.dp, end = 20.dp)
                 ) {
-                    // Bouton retour
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier
@@ -92,65 +118,44 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             .background(Beige100.copy(alpha = 0.6f))
                             .size(40.dp)
                     ) {
-                        Icon(
-                            Icons.Default.ArrowBack,
-                            contentDescription = "Retour",
-                            tint = BrownDark
-                        )
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour", tint = BrownDark)
                     }
-
-                    // Infos film centrées
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 52.dp),
+                        modifier = Modifier.fillMaxWidth().padding(top = 52.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        // Icône film
                         Box(
                             modifier = Modifier
                                 .size(64.dp)
                                 .clip(RoundedCornerShape(16.dp))
                                 .background(BrownMid.copy(alpha = 0.15f)),
                             contentAlignment = Alignment.Center
-                        ) {
-                            Text("🎬", fontSize = 30.sp)
-                        }
+                        ) { Text("🎬", fontSize = 30.sp) }
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = film.titre,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary,
-                            textAlign = TextAlign.Center,
-                            lineHeight = 26.sp
+                            fontSize = 20.sp, fontWeight = FontWeight.Bold,
+                            color = TextPrimary, textAlign = TextAlign.Center, lineHeight = 26.sp
                         )
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
+                        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
                             if (film.annee != 0) {
-                                Chip(label = "📅 ${film.annee}")
+                                Chip("📅 ${film.annee}")
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
-                            if (film.genre.isNotEmpty()) {
-                                Chip(label = "🎭 ${film.genre}")
-                            }
+                            if (film.genre.isNotEmpty()) Chip("🎭 ${film.genre}")
                         }
                     }
                 }
             }
 
-            // ── Section DVD ────────────────────────────────────────────
+            // ── Section : possèdent le film ───────────────────────────
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
                     text = "POSSÈDENT CE FILM",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = BrownLight,
-                    letterSpacing = 2.sp,
+                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                    color = BrownLight, letterSpacing = 2.sp,
                     modifier = Modifier.padding(horizontal = 20.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
@@ -158,40 +163,33 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
 
             if (isLoading) {
                 item {
-                    Box(
-                        modifier = Modifier.fillMaxWidth().padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) { CircularProgressIndicator(color = BrownMid) }
+                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = BrownMid)
+                    }
                 }
             } else {
                 if (ownersOnDvd.isEmpty()) {
-                    item { EmptyState(text = "Aucun utilisateur ne possède ce film.") }
+                    item { EmptyState("Aucun utilisateur ne possède ce film.") }
                 } else {
-                    items(ownersOnDvd) { username ->
-                        UserRow(username = username, emoji = "📀")
-                    }
+                    items(ownersOnDvd) { username -> UserRow(username, "📀") }
                 }
 
-                // ── Section veulent s'en débarrasser ───────────────────
+                // ── Section : veulent s'en débarrasser ────────────────
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
                         text = "VEULENT S'EN DÉBARRASSER",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = BrownLight,
-                        letterSpacing = 2.sp,
+                        fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
+                        color = BrownLight, letterSpacing = 2.sp,
                         modifier = Modifier.padding(horizontal = 20.dp)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 if (ownersWantingToSell.isEmpty()) {
-                    item { EmptyState(text = "Aucun utilisateur ne souhaite s'en débarrasser.") }
+                    item { EmptyState("Aucun utilisateur ne souhaite s'en débarrasser.") }
                 } else {
-                    items(ownersWantingToSell) { username ->
-                        UserRow(username = username, emoji = "🏷️")
-                    }
+                    items(ownersWantingToSell) { username -> UserRow(username, "🏷️") }
                 }
 
                 item { Spacer(modifier = Modifier.height(32.dp)) }
@@ -245,11 +243,6 @@ private fun UserRow(username: String, emoji: String) {
             contentAlignment = Alignment.Center
         ) { Text(emoji, fontSize = 16.sp) }
         Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = username,
-            fontWeight = FontWeight.Medium,
-            fontSize = 15.sp,
-            color = TextPrimary
-        )
+        Text(text = username, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = TextPrimary)
     }
 }
