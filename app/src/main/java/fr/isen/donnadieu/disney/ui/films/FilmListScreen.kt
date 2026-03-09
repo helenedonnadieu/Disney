@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -47,8 +48,11 @@ data class SousSaga(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
-
+fun FilmListScreen(
+    franchiseName: String,
+    onBack: () -> Unit,
+    onRequireLogin: () -> Unit // Gère la redirection si non connecté
+) {
     val statusViewModel: FilmStatusViewModel = viewModel()
     var sousSagas by remember { mutableStateOf<List<SousSaga>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -104,13 +108,9 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
         })
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Beige100)
-    ) {
-        // ── Top bar custom ─────────────────────────────────────────────
+    Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         Column(modifier = Modifier.fillMaxSize()) {
+            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -119,7 +119,7 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour", tint = BrownDark)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark)
                     }
                     Text(
                         text = franchiseName,
@@ -136,9 +136,7 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                 }
             } else {
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(vertical = 12.dp)
                 ) {
@@ -157,7 +155,8 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                             FilmCard(
                                 film = film,
                                 statusViewModel = statusViewModel,
-                                onFilmClick = { selectedFilm = film }
+                                onFilmClick = { selectedFilm = film },
+                                onRequireLogin = onRequireLogin // Transmission de la fonction
                             )
                         }
                     }
@@ -171,21 +170,23 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
 fun FilmCard(
     film: Film,
     statusViewModel: FilmStatusViewModel,
-    onFilmClick: () -> Unit
+    onFilmClick: () -> Unit,
+    onRequireLogin: () -> Unit
 ) {
+    val auth = FirebaseAuth.getInstance()
     val statuses by statusViewModel.userFilmStatuses.collectAsState()
     val key = film.titre.replace(".", "").replace("#", "").replace("$", "").replace("[", "").replace("]", "")
     val currentStatus = statuses[key]
     var showMenu by remember { mutableStateOf(false) }
 
+    // Labels traduits en anglais
     val statusLabels = mapOf(
         "watched"       to "✓ Watched",
-        "want_to_watch" to "♡ Want to watch",
-        "owned"         to "📀 Own on DVD",
-        "want_to_sell"  to "🏷️ Want to get rid of"
+        "want_to_watch" to "♡ Watchlist",
+        "owned"         to "發 Owned",
+        "want_to_sell"  to "鴫 For Sale"
     )
 
-    // Couleur du badge selon le statut
     val statusColor = when (currentStatus) {
         "watched"       -> Color(0xFF5A8A6A)
         "want_to_watch" -> Color(0xFF6A7A8A)
@@ -204,7 +205,6 @@ fun FilmCard(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        // Infos film
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "${film.numero}. ${film.titre}",
@@ -213,17 +213,12 @@ fun FilmCard(
                 color = TextPrimary
             )
             if (film.genre.isNotEmpty()) {
-                Text(
-                    text = film.genre,
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
+                Text(text = film.genre, fontSize = 12.sp, color = TextSecondary)
             }
         }
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        // Année + bouton statut compact
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (film.annee != 0) {
                 Text(
@@ -235,7 +230,6 @@ fun FilmCard(
                 Spacer(modifier = Modifier.width(8.dp))
             }
 
-            // Bouton statut compact
             Box {
                 Box(
                     modifier = Modifier
@@ -244,13 +238,20 @@ fun FilmCard(
                             if (currentStatus != null) statusColor.copy(alpha = 0.12f)
                             else Beige200
                         )
-                        .clickable { showMenu = true }
+                        .clickable {
+                            // Vérification cruciale : l'utilisateur est-il connecté ?
+                            if (auth.currentUser != null) {
+                                showMenu = true
+                            } else {
+                                onRequireLogin()
+                            }
+                        }
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
                         text = if (currentStatus != null)
-                            statusLabels[currentStatus] ?: "Statut"
-                        else "＋ Statut",
+                            statusLabels[currentStatus] ?: "Status"
+                        else "＋ Status",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = if (currentStatus != null) statusColor else BrownMid
@@ -275,7 +276,7 @@ fun FilmCard(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    "🗑 Supprimer le statut",
+                                    "🗑 Remove status",
                                     color = MaterialTheme.colorScheme.error,
                                     fontSize = 14.sp
                                 )

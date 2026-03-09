@@ -63,13 +63,12 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
 
                     val allUids = (dvdUids + sellUids).distinct()
 
-                    // Aucun résultat → on arrête
                     if (allUids.isEmpty()) {
                         isLoading = false
                         return
                     }
 
-                    // Étape 2 : résout l'email de chaque UID via /users/{uid}/email
+                    // Étape 2 : résout l'email/pseudo de chaque UID via /users/{uid}
                     val resolvedNames = mutableMapOf<String, String>()
                     var remaining = allUids.size
 
@@ -118,7 +117,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             .background(Beige100.copy(alpha = 0.6f))
                             .size(40.dp)
                     ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour", tint = BrownDark)
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark) // ← Traduit
                     }
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(top = 52.dp),
@@ -149,11 +148,11 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
             }
 
-            // ── Section : possèdent le film ───────────────────────────
+            // ── Section : Owners ───────────────────────────
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
-                    text = "Owns this movie",
+                    text = "CURRENT OWNERS", // ← Traduit
                     fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                     color = BrownLight, letterSpacing = 2.sp,
                     modifier = Modifier.padding(horizontal = 20.dp)
@@ -174,11 +173,11 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                     items(ownersOnDvd) { username -> UserRow(username, "📀") }
                 }
 
-                // ── Section : veulent s'en débarrasser ────────────────
+                // ── Section : For Sale ────────────────
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = "Wants to get rid of it",
+                        text = "MARKETPLACE / FOR SALE", // ← Traduit
                         fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                         color = BrownLight, letterSpacing = 2.sp,
                         modifier = Modifier.padding(horizontal = 20.dp)
@@ -187,7 +186,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
 
                 if (ownersWantingToSell.isEmpty()) {
-                    item { EmptyState("No user wants to get rid of it.") }
+                    item { EmptyState("No user wants to sell this movie.") } // ← Traduit
                 } else {
                     items(ownersWantingToSell) { username -> UserRow(username, "🏷️") }
                 }

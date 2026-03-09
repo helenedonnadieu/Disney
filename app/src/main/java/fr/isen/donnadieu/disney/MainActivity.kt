@@ -51,7 +51,7 @@ class MainActivity : ComponentActivity() {
                                             popUpTo("home") { inclusive = true }
                                         }
                                     },
-                                    icon = { Icon(Icons.Default.Home, contentDescription = "Accueil") },
+                                    icon = { Icon(Icons.Default.Home, contentDescription = "Home") },
                                     label = { Text("Home") }
                                 )
                                 NavigationBarItem(
@@ -63,8 +63,8 @@ class MainActivity : ComponentActivity() {
                                             navController.navigate("login_profile")
                                         }
                                     },
-                                    icon = { Icon(Icons.Default.Person, contentDescription = "Profil") },
-                                    label = { Text("Profil") }
+                                    icon = { Icon(Icons.Default.Person, contentDescription = "Profile") },
+                                    label = { Text("Profile") }
                                 )
                             }
                         }
@@ -72,7 +72,7 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = "home", // ← CHANGEMENT : toujours home au démarrage
+                        startDestination = "home",
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("login") {
@@ -83,7 +83,8 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("login") { inclusive = true }
                                     }
                                 },
-                                onGoToRegister = { navController.navigate("register") }
+                                onGoToRegister = { navController.navigate("register") },
+                                onBack = { navController.popBackStack() } // ← AJOUTÉ
                             )
                         }
 
@@ -111,7 +112,10 @@ class MainActivity : ComponentActivity() {
                             val franchiseName = backStackEntry.arguments?.getString("franchiseName") ?: ""
                             FilmListScreen(
                                 franchiseName = franchiseName,
-                                onBack = { navController.popBackStack() }
+                                onBack = { navController.popBackStack() },
+                                onRequireLogin = {
+                                    navController.navigate("login_profile")
+                                }
                             )
                         }
 
@@ -133,7 +137,8 @@ class MainActivity : ComponentActivity() {
                                         popUpTo("login_profile") { inclusive = true }
                                     }
                                 },
-                                onGoToRegister = { navController.navigate("register") }
+                                onGoToRegister = { navController.navigate("register") },
+                                onBack = { navController.popBackStack() } // ← AJOUTÉ
                             )
                         }
                     }
