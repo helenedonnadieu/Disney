@@ -1,5 +1,6 @@
 package fr.isen.donnadieu.disney.ui.universe
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -15,6 +16,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -22,6 +25,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import fr.isen.donnadieu.disney.R
 
 private val Beige100      = Color(0xFFF5F0E8)
 private val Beige200      = Color(0xFFEDE4D3)
@@ -57,14 +61,9 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
         })
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Beige100)
-    ) {
+    Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         Column(modifier = Modifier.fillMaxSize()) {
-
-            // ── Header ─────────────────────────────────────────────────
+            // Header
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -72,22 +71,10 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                     .padding(top = 56.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
             ) {
                 Column {
-                    Text(
-                        text = "🎬",
-                        fontSize = 32.sp
-                    )
+                    Text(text = "🎬", fontSize = 32.sp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text(
-                        text = "Univers Disney",
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Choisissez une franchise",
-                        fontSize = 13.sp,
-                        color = TextSecondary
-                    )
+                    Text(text = "Disney Universe", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(text = "Choose a franchise", fontSize = 13.sp, color = TextSecondary)
                 }
             }
 
@@ -96,20 +83,14 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                     CircularProgressIndicator(color = BrownMid)
                 }
             } else {
-                // ── Subtitle ───────────────────────────────────────────
                 Text(
                     text = "${franchises.size} FRANCHISES",
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = BrownLight,
-                    letterSpacing = 2.sp,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = BrownLight,
+                    letterSpacing = 2.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
                 )
 
                 LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp),
+                    modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
@@ -145,7 +126,53 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                     .background(Beige200),
                 contentAlignment = Alignment.Center
             ) {
-                Text(text = "✨", fontSize = 18.sp)
+                // --- LOGIQUE CORRIGÉE ICI ---
+                when (franchise.nom) {
+                    "Star Wars","Indiana Jones" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.lucas_film),
+                            contentDescription = "Lucasfilm Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Marvel Cinematic Universe" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.marvel_studio),
+                            contentDescription = "Marvel Studio Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "X-Men Cinematic Universe","Spider-Man" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.marvel),
+                            contentDescription = "Marvel Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Pirates des Caraïbes","Flubber","La Coccinelle","Tron","Benjamin Gates","Dexter Riley","Freaky Friday","L'incroyable Voyage","La Montagne Ensorcelée","Le Monde de Narnia","Les Petits Champions","Shaggy Dog","Super Noël" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.walt_disney),
+                            contentDescription = "walt disney Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "La Planète des Singes", "Alien et Predator", "Die Hard", "Avatar","Alvin et les Chipmunks","Big Mamma","Cisco Kid","Docteur Dolittle","Flicka","Hercule Poirot","Independence Day","Jones Family","Journal d'un Dégonflé","Kigsman","L'inspecteur Hornleigh","La Malédiction","La Mouche", "La Nuit au Musée", "Le Labyrinthe","Maman, J'ai Raté l'Avion","Michael Shayne","Mr. Belvédère","Mr. Moto","Percy Jackson","Porky's","Taken","Treize à la Douzaine"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.century_fox),
+                            contentDescription = "20th Century Fox Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+
+                    else -> {
+                        Text(text = "✨", fontSize = 18.sp)
+                    }
+                }
             }
             Spacer(modifier = Modifier.width(14.dp))
             Text(
