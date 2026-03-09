@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "835983936101",
+    "firebase_url": "https://disney-e7992-default-rtdb.firebaseio.com",
+    "project_id": "disney-e7992",
+    "storage_bucket": "disney-e7992.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:835983936101:android:b5aa6f8c48b71a74e7d48c",
+        "android_client_info": {
+          "package_name": "fr.isen.donnadieu.disney"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDz6PODxQHjURE0r10AP5VQLXKNsDHKtAY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
