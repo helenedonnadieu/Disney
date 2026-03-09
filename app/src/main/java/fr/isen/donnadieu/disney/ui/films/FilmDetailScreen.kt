@@ -17,6 +17,7 @@ import com.google.firebase.database.*
 @Composable
 fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
 
+    var ownersOnDvd by remember { mutableStateOf<List<String>>(emptyList()) }
     var ownersWantingToSell by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
@@ -28,11 +29,12 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
     LaunchedEffect(filmKey) {
         val db = FirebaseDatabase.getInstance().reference
 
-        // Structure attendue : /users/{userId}/films/{filmKey}/status
-        //                      /users/{userId}/username  (ou email)
+        // Structure : /users/{userId}/films/{filmKey}/status
+        //             /users/{userId}/username  (ou email)
         db.child("users").addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                val result = mutableListOf<String>()
+                val dvdList  = mutableListOf<String>()
+                val sellList = mutableListOf<String>()
 
                 for (userSnap in snapshot.children) {
                     val status = userSnap
@@ -41,16 +43,19 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                         .child("status")
                         .getValue(String::class.java)
 
-                    if (status == "want_to_sell") {
-                        val name = userSnap.child("username").getValue(String::class.java)
-                            ?: userSnap.child("email").getValue(String::class.java)
-                            ?: userSnap.key
-                            ?: "Utilisateur inconnu"
-                        result.add(name)
+                    val name = userSnap.child("username").getValue(String::class.java)
+                        ?: userSnap.child("email").getValue(String::class.java)
+                        ?: userSnap.key
+                        ?: "Utilisateur inconnu"
+
+                    when (status) {
+                        "owned"         -> dvdList.add(name)
+                        "want_to_sell"  -> sellList.add(name)
                     }
                 }
 
-                ownersWantingToSell = result
+                ownersOnDvd         = dvdList
+                ownersWantingToSell = sellList
                 isLoading = false
             }
 
@@ -79,7 +84,8 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Infos du film
+
+            // ── Infos du film ──────────────────────────────────────────
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -96,49 +102,74 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 HorizontalDivider()
-                Spacer(modifier = Modifier.height(16.dp))
             }
 
-            // Section utilisateurs
-            item {
-                Text(
-                    text = "get rid of it",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            when {
-                isLoading -> item {
-                    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+            if (isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         CircularProgressIndicator()
                     }
                 }
-                ownersWantingToSell.isEmpty() -> item {
+            } else {
+
+                // ── Section 1 : Possèdent le film en DVD/Blu-ray ──────────
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "utilisateur wants to get rid of it.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = "📀 Possèdent ce film (DVD / Blu-ray)",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
                     )
+                    Spacer(modifier = Modifier.height(6.dp))
                 }
-                else -> items(ownersWantingToSell) { username ->
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        ),
-                        elevation = CardDefaults.cardElevation(1.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "👤", style = MaterialTheme.typography.titleMedium)
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text(text = username, fontWeight = FontWeight.Medium)
-                        }
+
+                if (ownersOnDvd.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Aucun utilisateur ne possède ce film.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                } else {
+                    items(ownersOnDvd) { username ->
+                        UserRow(username = username, emoji = "📀")
+                    }
+                }
+
+                // ── Section 2 : Veulent s'en débarrasser ─────────────────
+                item {
+                    Spacer(modifier = Modifier.height(12.dp))
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = "🏷️ Veulent s'en débarrasser",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(6.dp))
+                }
+
+                if (ownersWantingToSell.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Aucun utilisateur ne souhaite s'en débarrasser.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                } else {
+                    items(ownersWantingToSell) { username ->
+                        UserRow(username = username, emoji = "👤")
                     }
                 }
             }
@@ -146,4 +177,24 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
     }
 }
 
-
+@Composable
+private fun UserRow(username: String, emoji: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 3.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(1.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = emoji, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.width(10.dp))
+            Text(text = username, fontWeight = FontWeight.Medium)
+        }
+    }
+}
