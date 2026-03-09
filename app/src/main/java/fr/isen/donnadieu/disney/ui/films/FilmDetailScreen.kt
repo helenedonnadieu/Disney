@@ -78,9 +78,9 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             .addListenerForSingleValueEvent(object : ValueEventListener {
                                 override fun onDataChange(snap: DataSnapshot) {
                                     resolvedNames[uid] =
-                                        snap.child("email").getValue(String::class.java)
-                                            ?: snap.child("username").getValue(String::class.java)
-                                                    ?: uid  // fallback sur l'UID si rien trouvé
+                                        snap.child("username").getValue(String::class.java)
+                                            ?: snap.child("email").getValue(String::class.java)
+                                                    ?: uid
                                     remaining--
                                     if (remaining == 0) {
                                         ownersOnDvd         = dvdUids.map { resolvedNames[it] ?: it }
