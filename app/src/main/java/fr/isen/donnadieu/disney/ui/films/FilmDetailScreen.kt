@@ -153,7 +153,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
-                    text = "POSSÈDENT CE FILM",
+                    text = "Owns this movie",
                     fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                     color = BrownLight, letterSpacing = 2.sp,
                     modifier = Modifier.padding(horizontal = 20.dp)
@@ -169,7 +169,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
             } else {
                 if (ownersOnDvd.isEmpty()) {
-                    item { EmptyState("Aucun utilisateur ne possède ce film.") }
+                    item { EmptyState("No user owns this movie.") }
                 } else {
                     items(ownersOnDvd) { username -> UserRow(username, "📀") }
                 }
@@ -178,7 +178,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = "VEULENT S'EN DÉBARRASSER",
+                        text = "Wants to get rid of it",
                         fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                         color = BrownLight, letterSpacing = 2.sp,
                         modifier = Modifier.padding(horizontal = 20.dp)
@@ -187,7 +187,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
 
                 if (ownersWantingToSell.isEmpty()) {
-                    item { EmptyState("Aucun utilisateur ne souhaite s'en débarrasser.") }
+                    item { EmptyState("No user wants to get rid of it.") }
                 } else {
                     items(ownersWantingToSell) { username -> UserRow(username, "🏷️") }
                 }

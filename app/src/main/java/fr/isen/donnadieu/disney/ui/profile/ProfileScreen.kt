@@ -249,7 +249,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
                 colors = ButtonDefaults.outlinedButtonColors(contentColor = ErrorRed),
                 border = androidx.compose.foundation.BorderStroke(1.dp, ErrorRed.copy(alpha = 0.4f))
             ) {
-                Text("Se déconnecter", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                Text("Log out", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             }
         }
     }

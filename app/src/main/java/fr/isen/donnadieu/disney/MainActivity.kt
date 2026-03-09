@@ -52,7 +52,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     },
                                     icon = { Icon(Icons.Default.Home, contentDescription = "Accueil") },
-                                    label = { Text("Accueil") }
+                                    label = { Text("Home") }
                                 )
                                 NavigationBarItem(
                                     selected = currentRoute == "profile",
