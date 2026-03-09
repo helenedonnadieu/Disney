@@ -1,23 +1,39 @@
 package fr.isen.donnadieu.disney.ui.universe
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
 
+private val Beige100      = Color(0xFFF5F0E8)
+private val Beige200      = Color(0xFFEDE4D3)
+private val Beige300      = Color(0xFFD9CBBA)
+private val BrownDark     = Color(0xFF4A3728)
+private val BrownMid      = Color(0xFF7C5C44)
+private val BrownLight    = Color(0xFFA67C5B)
+private val TextPrimary   = Color(0xFF2E1F14)
+private val TextSecondary = Color(0xFF8C7060)
+
 data class Franchise(val nom: String = "")
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
     var franchises by remember { mutableStateOf<List<Franchise>>(emptyList()) }
@@ -28,11 +44,8 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
         db.addValueEventListener(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val list = mutableListOf<Franchise>()
-                // Parcourt chaque catégorie
                 for (category in snapshot.children) {
-                    // Parcourt chaque franchise dans la catégorie
-                    val franchisesSnap = category.child("franchises")
-                    for (franchise in franchisesSnap.children) {
+                    for (franchise in category.child("franchises").children) {
                         val nom = franchise.child("nom").getValue(String::class.java) ?: ""
                         if (nom.isNotEmpty()) list.add(Franchise(nom))
                     }
@@ -40,38 +53,72 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                 franchises = list
                 isLoading = false
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                isLoading = false
-            }
+            override fun onCancelled(error: DatabaseError) { isLoading = false }
         })
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(title = { Text("Univers Disney") })
-        }
-    ) { innerPadding ->
-        if (isLoading) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Beige100)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+
+            // ── Header ─────────────────────────────────────────────────
             Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
+                    .padding(top = 56.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
             ) {
-                items(franchises) { franchise ->
-                    FranchiseCard(
-                        franchise = franchise,
-                        onClick = { onFranchiseClick(franchise.nom) }
+                Column {
+                    Text(
+                        text = "🎬",
+                        fontSize = 32.sp
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "Univers Disney",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = "Choisissez une franchise",
+                        fontSize = 13.sp,
+                        color = TextSecondary
+                    )
+                }
+            }
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = BrownMid)
+                }
+            } else {
+                // ── Subtitle ───────────────────────────────────────────
+                Text(
+                    text = "${franchises.size} FRANCHISES",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = BrownLight,
+                    letterSpacing = 2.sp,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
+                )
+
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(bottom = 16.dp)
+                ) {
+                    items(franchises) { franchise ->
+                        FranchiseCard(
+                            franchise = franchise,
+                            onClick = { onFranchiseClick(franchise.nom) }
+                        )
+                    }
                 }
             }
         }
@@ -80,23 +127,39 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
 
 @Composable
 fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(4.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .clickable { onClick() }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Row(
-            modifier = Modifier
-                .padding(20.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(Beige200),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = "✨", fontSize = 18.sp)
+            }
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = franchise.nom,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 15.sp,
+                color = TextPrimary
             )
         }
+        Icon(
+            imageVector = Icons.Default.KeyboardArrowRight,
+            contentDescription = null,
+            tint = BrownLight,
+            modifier = Modifier.size(20.dp)
+        )
     }
 }

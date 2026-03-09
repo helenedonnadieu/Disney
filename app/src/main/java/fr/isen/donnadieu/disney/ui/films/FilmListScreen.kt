@@ -1,22 +1,37 @@
 package fr.isen.donnadieu.disney.ui.films
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+
+private val Beige100      = Color(0xFFF5F0E8)
+private val Beige200      = Color(0xFFEDE4D3)
+private val Beige300      = Color(0xFFD9CBBA)
+private val BrownDark     = Color(0xFF4A3728)
+private val BrownMid      = Color(0xFF7C5C44)
+private val BrownLight    = Color(0xFFA67C5B)
+private val TextPrimary   = Color(0xFF2E1F14)
+private val TextSecondary = Color(0xFF8C7060)
 
 data class Film(
     val titre: String = "",
@@ -37,9 +52,8 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
     val statusViewModel: FilmStatusViewModel = viewModel()
     var sousSagas by remember { mutableStateOf<List<SousSaga>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    var selectedFilm by remember { mutableStateOf<Film?>(null) } // ← AJOUT
+    var selectedFilm by remember { mutableStateOf<Film?>(null) }
 
-    // ← AJOUT : si un film est sélectionné, afficher son détail
     selectedFilm?.let { film ->
         FilmDetailScreen(film = film, onBack = { selectedFilm = null })
         return
@@ -50,12 +64,10 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
         db.addListenerForSingleValueEvent(object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
                 val sagaList = mutableListOf<SousSaga>()
-
                 for (category in snapshot.children) {
                     for (franchise in category.child("franchises").children) {
                         val nom = franchise.child("nom").getValue(String::class.java) ?: ""
                         if (nom != franchiseName) continue
-
                         val sousSagasSnap = franchise.child("sous_sagas")
                         if (sousSagasSnap.exists()) {
                             for (sousSaga in sousSagasSnap.children) {
@@ -85,58 +97,69 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                         }
                     }
                 }
-
                 sousSagas = sagaList
                 isLoading = false
             }
-
-            override fun onCancelled(error: DatabaseError) {
-                isLoading = false
-            }
+            override fun onCancelled(error: DatabaseError) { isLoading = false }
         })
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(franchiseName) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour")
-                    }
-                }
-            )
-        }
-    ) { innerPadding ->
-        if (isLoading) {
-            Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Beige100)
+    ) {
+        // ── Top bar custom ─────────────────────────────────────────────
+        Column(modifier = Modifier.fillMaxSize()) {
+            Box(
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxWidth()
+                    .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
+                    .padding(top = 48.dp, bottom = 16.dp, start = 8.dp, end = 16.dp)
             ) {
-                sousSagas.forEach { saga ->
-                    item {
-                        Text(
-                            text = saga.nom,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
-                        )
-                        HorizontalDivider()
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Retour", tint = BrownDark)
                     }
-                    items(saga.films) { film ->
-                        FilmCard(
-                            film = film,
-                            statusViewModel = statusViewModel,
-                            onFilmClick = { selectedFilm = film } // ← AJOUT
-                        )
+                    Text(
+                        text = franchiseName,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                }
+            }
+
+            if (isLoading) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = BrownMid)
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                    contentPadding = PaddingValues(vertical = 12.dp)
+                ) {
+                    sousSagas.forEach { saga ->
+                        item {
+                            Text(
+                                text = saga.nom.uppercase(),
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = BrownLight,
+                                letterSpacing = 2.sp,
+                                modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)
+                            )
+                        }
+                        items(saga.films) { film ->
+                            FilmCard(
+                                film = film,
+                                statusViewModel = statusViewModel,
+                                onFilmClick = { selectedFilm = film }
+                            )
+                        }
                     }
                 }
             }
@@ -148,7 +171,7 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
 fun FilmCard(
     film: Film,
     statusViewModel: FilmStatusViewModel,
-    onFilmClick: () -> Unit // ← AJOUT
+    onFilmClick: () -> Unit
 ) {
     val statuses by statusViewModel.userFilmStatuses.collectAsState()
     val key = film.titre.replace(".", "").replace("#", "").replace("$", "").replace("[", "").replace("]", "")
@@ -156,58 +179,81 @@ fun FilmCard(
     var showMenu by remember { mutableStateOf(false) }
 
     val statusLabels = mapOf(
-        "watched"       to " Watched ",
-        "want_to_watch" to " Want to watch ",
-        "owned"         to " Own on DVD",
-        "want_to_sell"  to " Want to get rid of "
+        "watched"       to "✓ Watched",
+        "want_to_watch" to "♡ Want to watch",
+        "owned"         to "📀 Own on DVD",
+        "want_to_sell"  to "🏷️ Want to get rid of"
     )
 
-    Card(
+    // Couleur du badge selon le statut
+    val statusColor = when (currentStatus) {
+        "watched"       -> Color(0xFF5A8A6A)
+        "want_to_watch" -> Color(0xFF6A7A8A)
+        "owned"         -> BrownMid
+        "want_to_sell"  -> Color(0xFFB85C52)
+        else            -> Color.Transparent
+    }
+
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onFilmClick() }, // ← AJOUT
-        elevation = CardDefaults.cardElevation(2.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White)
+            .clickable { onFilmClick() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "${film.numero}. ${film.titre}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    if (film.genre.isNotEmpty()) {
-                        Text(
-                            text = film.genre,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                if (film.annee != 0) {
-                    Text(
-                        text = film.annee.toString(),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
+        // Infos film
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${film.numero}. ${film.titre}",
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp,
+                color = TextPrimary
+            )
+            if (film.genre.isNotEmpty()) {
+                Text(
+                    text = film.genre,
+                    fontSize = 12.sp,
+                    color = TextSecondary
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Année + bouton statut compact
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (film.annee != 0) {
+                Text(
+                    text = film.annee.toString(),
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = BrownLight
+                )
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
+            // Bouton statut compact
             Box {
-                OutlinedButton(
-                    onClick = { showMenu = true },
-                    modifier = Modifier.fillMaxWidth()
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(
+                            if (currentStatus != null) statusColor.copy(alpha = 0.12f)
+                            else Beige200
+                        )
+                        .clickable { showMenu = true }
+                        .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(
-                        text = if (currentStatus != null) statusLabels[currentStatus] ?: "Statut"
-                        else "＋ Ajouter un statut"
+                        text = if (currentStatus != null)
+                            statusLabels[currentStatus] ?: "Statut"
+                        else "＋ Statut",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (currentStatus != null) statusColor else BrownMid
                     )
                 }
 
@@ -215,11 +261,11 @@ fun FilmCard(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
                 ) {
-                    statusLabels.forEach { (key, label) ->
+                    statusLabels.forEach { (statusKey, label) ->
                         DropdownMenuItem(
-                            text = { Text(label) },
+                            text = { Text(label, fontSize = 14.sp) },
                             onClick = {
-                                statusViewModel.setFilmStatus(film.titre, key)
+                                statusViewModel.setFilmStatus(film.titre, statusKey)
                                 showMenu = false
                             }
                         )
@@ -227,7 +273,13 @@ fun FilmCard(
                     if (currentStatus != null) {
                         HorizontalDivider()
                         DropdownMenuItem(
-                            text = { Text("🗑 Supprimer le statut", color = MaterialTheme.colorScheme.error) },
+                            text = {
+                                Text(
+                                    "🗑 Supprimer le statut",
+                                    color = MaterialTheme.colorScheme.error,
+                                    fontSize = 14.sp
+                                )
+                            },
                             onClick = {
                                 statusViewModel.removeFilmStatus(film.titre)
                                 showMenu = false
