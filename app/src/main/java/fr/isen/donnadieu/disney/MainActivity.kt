@@ -20,7 +20,7 @@ import fr.isen.donnadieu.disney.auth.AuthViewModel
 import fr.isen.donnadieu.disney.auth.LoginScreen
 import fr.isen.donnadieu.disney.auth.RegisterScreen
 import fr.isen.donnadieu.disney.ui.films.FilmListScreen
-import fr.isen.donnadieu.disney.ui.profile.ProfileScreen   // ← AJOUT
+import fr.isen.donnadieu.disney.ui.profile.ProfileScreen
 import fr.isen.donnadieu.disney.ui.theme.DisneyTheme
 import fr.isen.donnadieu.disney.ui.universe.UniverseScreen
 
@@ -33,15 +33,14 @@ class MainActivity : ComponentActivity() {
                 val viewModel: AuthViewModel = viewModel()
                 val navController = rememberNavController()
 
-                // ── AJOUT : savoir sur quelle route on est ──────────────
                 val currentBackStack by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStack?.destination?.route
+
                 val showBottomBar = currentRoute == "home"
                         || currentRoute == "profile"
                         || currentRoute?.startsWith("films/") == true
 
                 Scaffold(
-                    // ── AJOUT : barre de navigation basse ───────────────
                     bottomBar = {
                         if (showBottomBar) {
                             NavigationBar {
@@ -57,7 +56,13 @@ class MainActivity : ComponentActivity() {
                                 )
                                 NavigationBarItem(
                                     selected = currentRoute == "profile",
-                                    onClick = { navController.navigate("profile") },
+                                    onClick = {
+                                        if (viewModel.isLoggedIn()) {
+                                            navController.navigate("profile")
+                                        } else {
+                                            navController.navigate("login_profile")
+                                        }
+                                    },
                                     icon = { Icon(Icons.Default.Person, contentDescription = "Profil") },
                                     label = { Text("Profil") }
                                 )
@@ -67,8 +72,8 @@ class MainActivity : ComponentActivity() {
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
-                        startDestination = if (viewModel.isLoggedIn()) "home" else "login",
-                        modifier = Modifier.padding(innerPadding)  // ← AJOUT pour éviter que le contenu passe sous la barre
+                        startDestination = "home", // ← CHANGEMENT : toujours home au démarrage
+                        modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("login") {
                             LoginScreen(
@@ -81,6 +86,7 @@ class MainActivity : ComponentActivity() {
                                 onGoToRegister = { navController.navigate("register") }
                             )
                         }
+
                         composable("register") {
                             RegisterScreen(
                                 viewModel = viewModel,
@@ -92,6 +98,7 @@ class MainActivity : ComponentActivity() {
                                 onGoToLogin = { navController.popBackStack() }
                             )
                         }
+
                         composable("home") {
                             UniverseScreen(
                                 onFranchiseClick = { franchiseName ->
@@ -99,6 +106,7 @@ class MainActivity : ComponentActivity() {
                                 }
                             )
                         }
+
                         composable("films/{franchiseName}") { backStackEntry ->
                             val franchiseName = backStackEntry.arguments?.getString("franchiseName") ?: ""
                             FilmListScreen(
@@ -107,14 +115,25 @@ class MainActivity : ComponentActivity() {
                             )
                         }
 
-                        // ── AJOUT : route profil ─────────────────────────
                         composable("profile") {
                             ProfileScreen(
                                 onLogout = {
-                                    navController.navigate("login") {
+                                    navController.navigate("home") {
                                         popUpTo(0) { inclusive = true }
                                     }
                                 }
+                            )
+                        }
+
+                        composable("login_profile") {
+                            LoginScreen(
+                                viewModel = viewModel,
+                                onLoginSuccess = {
+                                    navController.navigate("profile") {
+                                        popUpTo("login_profile") { inclusive = true }
+                                    }
+                                },
+                                onGoToRegister = { navController.navigate("register") }
                             )
                         }
                     }
