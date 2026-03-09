@@ -1,5 +1,6 @@
 package fr.isen.donnadieu.disney.ui.films
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +37,13 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
     val statusViewModel: FilmStatusViewModel = viewModel()
     var sousSagas by remember { mutableStateOf<List<SousSaga>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var selectedFilm by remember { mutableStateOf<Film?>(null) } // ← AJOUT
+
+    // ← AJOUT : si un film est sélectionné, afficher son détail
+    selectedFilm?.let { film ->
+        FilmDetailScreen(film = film, onBack = { selectedFilm = null })
+        return
+    }
 
     LaunchedEffect(franchiseName) {
         val db = FirebaseDatabase.getInstance().getReference("categories")
@@ -48,7 +56,6 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                         val nom = franchise.child("nom").getValue(String::class.java) ?: ""
                         if (nom != franchiseName) continue
 
-                        // Cas 1 : franchise avec sous_sagas
                         val sousSagasSnap = franchise.child("sous_sagas")
                         if (sousSagasSnap.exists()) {
                             for (sousSaga in sousSagasSnap.children) {
@@ -65,7 +72,6 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                                 sagaList.add(SousSaga(sagaNom, films))
                             }
                         } else {
-                            // Cas 2 : franchise avec films directs
                             val films = mutableListOf<Film>()
                             for (film in franchise.child("films").children) {
                                 films.add(Film(
@@ -115,7 +121,6 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 sousSagas.forEach { saga ->
-                    // Titre de la sous-saga
                     item {
                         Text(
                             text = saga.nom,
@@ -126,9 +131,12 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
                         )
                         HorizontalDivider()
                     }
-                    // Films de la sous-saga
                     items(saga.films) { film ->
-                        FilmCard(film = film, statusViewModel = statusViewModel)
+                        FilmCard(
+                            film = film,
+                            statusViewModel = statusViewModel,
+                            onFilmClick = { selectedFilm = film } // ← AJOUT
+                        )
                     }
                 }
             }
@@ -137,7 +145,11 @@ fun FilmListScreen(franchiseName: String, onBack: () -> Unit) {
 }
 
 @Composable
-fun FilmCard(film: Film, statusViewModel: FilmStatusViewModel) {
+fun FilmCard(
+    film: Film,
+    statusViewModel: FilmStatusViewModel,
+    onFilmClick: () -> Unit // ← AJOUT
+) {
     val statuses by statusViewModel.userFilmStatuses.collectAsState()
     val key = film.titre.replace(".", "").replace("#", "").replace("$", "").replace("[", "").replace("]", "")
     val currentStatus = statuses[key]
@@ -151,7 +163,9 @@ fun FilmCard(film: Film, statusViewModel: FilmStatusViewModel) {
     )
 
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onFilmClick() }, // ← AJOUT
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -186,7 +200,6 @@ fun FilmCard(film: Film, statusViewModel: FilmStatusViewModel) {
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Bouton statut
             Box {
                 OutlinedButton(
                     onClick = { showMenu = true },

@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                   // startDestination = "login"
+                    // startDestination = "login"
                     startDestination = if (viewModel.isLoggedIn()) "home" else "login"
 
                 ) {
