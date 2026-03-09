@@ -12,6 +12,7 @@ import androidx.navigation.compose.rememberNavController
 import fr.isen.donnadieu.disney.auth.AuthViewModel
 import fr.isen.donnadieu.disney.auth.LoginScreen
 import fr.isen.donnadieu.disney.auth.RegisterScreen
+import fr.isen.donnadieu.disney.ui.films.FilmListScreen
 import fr.isen.donnadieu.disney.ui.theme.DisneyTheme
 import fr.isen.donnadieu.disney.ui.universe.UniverseScreen
 
@@ -26,7 +27,9 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = "login"
+                   // startDestination = "login"
+                    startDestination = if (viewModel.isLoggedIn()) "home" else "login"
+
                 ) {
                     composable("login") {
                         LoginScreen(
@@ -60,7 +63,10 @@ class MainActivity : ComponentActivity() {
 
                     composable("films/{franchiseName}") { backStackEntry ->
                         val franchiseName = backStackEntry.arguments?.getString("franchiseName") ?: ""
-                        Text("Films de $franchiseName - à faire") // on remplacera ça après
+                        FilmListScreen(
+                            franchiseName = franchiseName,
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                 }
             }
