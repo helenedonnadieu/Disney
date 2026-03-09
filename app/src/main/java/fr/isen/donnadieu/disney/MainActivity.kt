@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.Text
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -12,6 +13,7 @@ import fr.isen.donnadieu.disney.auth.AuthViewModel
 import fr.isen.donnadieu.disney.auth.LoginScreen
 import fr.isen.donnadieu.disney.auth.RegisterScreen
 import fr.isen.donnadieu.disney.ui.theme.DisneyTheme
+import fr.isen.donnadieu.disney.ui.universe.UniverseScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -24,7 +26,7 @@ class MainActivity : ComponentActivity() {
 
                 NavHost(
                     navController = navController,
-                    startDestination = if (viewModel.isLoggedIn()) "home" else "login"
+                    startDestination = "login"
                 ) {
                     composable("login") {
                         LoginScreen(
@@ -49,7 +51,16 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable("home") {
-                        // on ajoutera l'écran d'accueil ici ensuite
+                        UniverseScreen(
+                            onFranchiseClick = { franchiseName ->
+                                navController.navigate("films/$franchiseName")
+                            }
+                        )
+                    }
+
+                    composable("films/{franchiseName}") { backStackEntry ->
+                        val franchiseName = backStackEntry.arguments?.getString("franchiseName") ?: ""
+                        Text("Films de $franchiseName - à faire") // on remplacera ça après
                     }
                 }
             }
