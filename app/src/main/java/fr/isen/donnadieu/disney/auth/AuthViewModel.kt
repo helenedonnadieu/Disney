@@ -8,7 +8,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 class AuthViewModel : ViewModel() {
     private val auth = FirebaseAuth.getInstance()
-    private val db   = FirebaseDatabase.getInstance().reference  // ← AJOUT
+    private val db   = FirebaseDatabase.getInstance().reference
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Idle)
     val authState: StateFlow<AuthState> = _authState
@@ -20,16 +20,26 @@ class AuthViewModel : ViewModel() {
             .addOnFailureListener { _authState.value = AuthState.Error(it.message ?: "Erreur") }
     }
 
-    fun register(email: String, password: String) {
+    // ← AJOUT : paramètre username
+    fun register(email: String, password: String, username: String) {
         _authState.value = AuthState.Loading
+
         auth.createUserWithEmailAndPassword(email, password)
             .addOnSuccessListener { result ->
                 val uid = result.user?.uid ?: return@addOnSuccessListener
-                // ← AJOUT : sauvegarde l'email pour que FilmDetailScreen puisse afficher le nom
-                db.child("users").child(uid).child("email").setValue(email)
+
+                val userData = mapOf(
+                    "email" to email,
+                    "username" to username
+                )
+
+                db.child("users").child(uid).setValue(userData)
+
                 _authState.value = AuthState.Success
             }
-            .addOnFailureListener { _authState.value = AuthState.Error(it.message ?: "Erreur") }
+            .addOnFailureListener {
+                _authState.value = AuthState.Error(it.message ?: "Erreur")
+            }
     }
 
     fun logout() {
