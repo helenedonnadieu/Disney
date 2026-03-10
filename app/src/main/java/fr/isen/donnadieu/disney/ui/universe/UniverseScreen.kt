@@ -63,18 +63,34 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
 
     Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
+            // --- HEADER AGRANDI ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
-                    .padding(top = 56.dp, bottom = 24.dp, start = 20.dp, end = 20.dp)
             ) {
-                Column {
-                    Text(text = "🎬", fontSize = 32.sp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text(text = "Disney Universe", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                    Text(text = "Choose a franchise", fontSize = 13.sp, color = TextSecondary)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.disney_banner),
+                        contentDescription = "Disney Universe Banner",
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp),
+                        contentScale = ContentScale.Crop
+                    )
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = "",
+                        fontSize = 14.sp,
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
                 }
             }
 
@@ -126,49 +142,44 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                     .background(Beige200),
                 contentAlignment = Alignment.Center
             ) {
-                // --- LOGIQUE CORRIGÉE ICI ---
+                // Ici, j'ai supprimé le .padding(4.dp) et mis ContentScale.Crop pour remplir le carré
                 when (franchise.nom) {
                     "Star Wars","Indiana Jones" -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.lucas_film),
-                            contentDescription = "Lucasfilm Logo",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize().padding(4.dp)
-                        )
+                        Image(painter = painterResource(id = R.drawable.lucas_film), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
                     "Marvel Cinematic Universe" -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.marvel_studio),
-                            contentDescription = "Marvel Studio Logo",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize().padding(4.dp)
-                        )
+                        Image(painter = painterResource(id = R.drawable.marvel_studio), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
-                    "X-Men Cinematic Universe","Spider-Man" -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.marvel),
-                            contentDescription = "Marvel Logo",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize().padding(4.dp)
-                        )
+                    "Anna et Viktor","Hamilton","Les Football Kings","Lili, la Petite Sorcière","Risto Räppääjä","Les Instables"-> {
+                        Image(painter = painterResource(id = R.drawable.buena_vista), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
-                    "Pirates des Caraïbes","Flubber","La Coccinelle","Tron","Benjamin Gates","Dexter Riley","Freaky Friday","L'incroyable Voyage","La Montagne Ensorcelée","Le Monde de Narnia","Les Petits Champions","Shaggy Dog","Super Noël" -> {
-                        Image(
-                            painter = painterResource(id = R.drawable.walt_disney),
-                            contentDescription = "walt disney Logo",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize().padding(4.dp)
-                        )
+                    "The Last Warrior"-> {
+                        Image(painter = painterResource(id = R.drawable.disney), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
-                    "La Planète des Singes", "Alien et Predator", "Die Hard", "Avatar","Alvin et les Chipmunks","Big Mamma","Cisco Kid","Docteur Dolittle","Flicka","Hercule Poirot","Independence Day","Jones Family","Journal d'un Dégonflé","Kigsman","L'inspecteur Hornleigh","La Malédiction","La Mouche", "La Nuit au Musée", "Le Labyrinthe","Maman, J'ai Raté l'Avion","Michael Shayne","Mr. Belvédère","Mr. Moto","Percy Jackson","Porky's","Taken","Treize à la Douzaine"-> {
-                        Image(
-                            painter = painterResource(id = R.drawable.century_fox),
-                            contentDescription = "20th Century Fox Logo",
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize().padding(4.dp)
-                        )
+                    "X-Men Cinematic Universe","Spider-Man","Blade","Les Quatre Fantastiques","Men in Black" -> {
+                        Image(painter = painterResource(id = R.drawable.marvel), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
                     }
-
+                    "Les Muppets"-> {
+                        Image(painter = painterResource(id = R.drawable.the_muppets_studio), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
+                    "Charlie Chan","Baaghi","Les Cavaliers de la Sauge Pourprée","Quirt & Flagg"-> {
+                        Image(painter = painterResource(id = R.drawable.fox_film), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
+                    "Ernest","Sexy Dance"-> {
+                        Image(painter = painterResource(id = R.drawable.touch_stone), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
+                    "Trois Couleurs"-> {
+                        Image(painter = painterResource(id = R.drawable.miramax), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
+                    "Highlander","Halloween","Scary Movie","Scream","Spy Kids" -> {
+                        Image(painter = painterResource(id = R.drawable.dimension_film), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
+                    "Pirates des Caraïbes","Flubber","Kingsman","La Coccinelle","Tron","Benjamin Gates","Dexter Riley","Freaky Friday","L'Incroyable Voyage","La Montagne Ensorcelée","Le Monde de Narnia","Les Petits Champions","Shaggy Dog","Super Noël" -> {
+                        Image(painter = painterResource(id = R.drawable.walt_disney), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
+                    "La Planète des Singes", "Alien et Predator", "Die Hard", "Avatar","Alvin et les Chipmunks","Big Mamma","Cisco Kid","Docteur Dolittle","Flicka","Hercule Poirot","Independence Day","Jones Family","Journal d'un Dégonflé","Kigsman","L'Inspecteur Hornleigh","La Malédiction","La Mouche", "La Nuit au Musée", "Le Labyrinthe","Maman, J'ai Raté l'Avion","Michael Shayne","Mr. Belvédère","Mr. Moto","Percy Jackson","Porky's","Taken","Treize à la Douzaine"-> {
+                        Image(painter = painterResource(id = R.drawable.century_fox), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
+                    }
                     else -> {
                         Text(text = "✨", fontSize = 18.sp)
                     }
