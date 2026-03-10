@@ -14,11 +14,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.google.firebase.database.*
+import fr.isen.donnadieu.disney.data.api.OmdbApi
+import fr.isen.donnadieu.disney.data.model.OmdbMovie
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 private val Beige100      = Color(0xFFF5F0E8)
 private val Beige200      = Color(0xFFEDE4D3)
@@ -29,28 +37,39 @@ private val BrownLight    = Color(0xFFA67C5B)
 private val TextPrimary   = Color(0xFF2E1F14)
 private val TextSecondary = Color(0xFF8C7060)
 
+// ── Retrofit singleton ────────────────────────────────────────────────────────
+private val omdbApi: OmdbApi by lazy {
+    Retrofit.Builder()
+        .baseUrl("https://www.omdbapi.com/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(OmdbApi::class.java)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
 
-    var ownersOnDvd by remember { mutableStateOf<List<String>>(emptyList()) }
+    var ownersOnDvd         by remember { mutableStateOf<List<String>>(emptyList()) }
     var ownersWantingToSell by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading           by remember { mutableStateOf(true) }
+
+    // ── État OMDb ─────────────────────────────────────────────────────────────
+    var omdbMovie   by remember { mutableStateOf<OmdbMovie?>(null) }
+    var omdbLoading by remember { mutableStateOf(false) }
 
     val filmKey = film.titre
         .replace(".", "").replace("#", "")
         .replace("$", "").replace("[", "").replace("]", "")
 
+    // ── Chargement Firebase ───────────────────────────────────────────────────
     LaunchedEffect(filmKey) {
         val db = FirebaseDatabase.getInstance().reference
-
-        // Étape 1 : récupère les UIDs depuis /user_films
         db.child("user_films")
             .addListenerForSingleValueEvent(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
                     val dvdUids  = mutableListOf<String>()
                     val sellUids = mutableListOf<String>()
-
                     for (userSnap in snapshot.children) {
                         val status = userSnap.child(filmKey).child("status")
                             .getValue(String::class.java)
@@ -60,18 +79,10 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             "want_to_sell" -> sellUids.add(uid)
                         }
                     }
-
                     val allUids = (dvdUids + sellUids).distinct()
-
-                    if (allUids.isEmpty()) {
-                        isLoading = false
-                        return
-                    }
-
-                    // Étape 2 : résout l'email/pseudo de chaque UID via /users/{uid}
+                    if (allUids.isEmpty()) { isLoading = false; return }
                     val resolvedNames = mutableMapOf<String, String>()
                     var remaining = allUids.size
-
                     for (uid in allUids) {
                         db.child("users").child(uid)
                             .addListenerForSingleValueEvent(object : ValueEventListener {
@@ -82,12 +93,12 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                                                     ?: uid
                                     remaining--
                                     if (remaining == 0) {
-                                        ownersOnDvd         = dvdUids.map { resolvedNames[it] ?: it }
+                                        ownersOnDvd         = dvdUids.map  { resolvedNames[it] ?: it }
                                         ownersWantingToSell = sellUids.map { resolvedNames[it] ?: it }
                                         isLoading = false
                                     }
                                 }
-                                override fun onCancelled(error: DatabaseError) {
+                                override fun onCancelled(e: DatabaseError) {
                                     remaining--
                                     if (remaining == 0) isLoading = false
                                 }
@@ -98,10 +109,26 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
             })
     }
 
+    // ── Chargement OMDb (seulement si imdbID disponible) ─────────────────────
+    LaunchedEffect(film.imdbID) {
+        val id = film.imdbID
+        if (id.isNullOrBlank() || id == "N/A") return@LaunchedEffect
+        omdbLoading = true
+        try {
+            val result = omdbApi.getMovieById(imdbId = id, apiKey = "f3553feb")
+            omdbMovie = result
+        } catch (e: Exception) {
+            // Pas de poster disponible, on garde null
+        } finally {
+            omdbLoading = false
+        }
+    }
+
+    // ── UI ────────────────────────────────────────────────────────────────────
     Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-            // ── Header ────────────────────────────────────────────────
+            // ── Header ────────────────────────────────────────────────────────
             item {
                 Box(
                     modifier = Modifier
@@ -117,42 +144,117 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             .background(Beige100.copy(alpha = 0.6f))
                             .size(40.dp)
                     ) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark) // ← Traduit
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark)
                     }
+
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(top = 52.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 52.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Box(
-                            modifier = Modifier
-                                .size(64.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(BrownMid.copy(alpha = 0.15f)),
-                            contentAlignment = Alignment.Center
-                        ) { Text("🎬", fontSize = 30.sp) }
+
+                        // ── Poster OMDb ───────────────────────────────────────
+                        val posterUrl = omdbMovie?.posterUrl
+                        if (omdbLoading) {
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 120.dp, height = 178.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(BrownMid.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    color = BrownMid,
+                                    modifier = Modifier.size(28.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            }
+                        } else if (!posterUrl.isNullOrBlank() && posterUrl != "N/A") {
+                            AsyncImage(
+                                model = ImageRequest.Builder(LocalContext.current)
+                                    .data(posterUrl)
+                                    .crossfade(true)
+                                    .build(),
+                                contentDescription = film.titre,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(width = 120.dp, height = 178.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                            )
+                        } else {
+                            // Fallback emoji si pas de poster
+                            Box(
+                                modifier = Modifier
+                                    .size(width = 120.dp, height = 178.dp)
+                                    .clip(RoundedCornerShape(16.dp))
+                                    .background(BrownMid.copy(alpha = 0.15f)),
+                                contentAlignment = Alignment.Center
+                            ) { Text("🎬", fontSize = 48.sp) }
+                        }
+
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(
                             text = film.titre,
                             fontSize = 20.sp, fontWeight = FontWeight.Bold,
                             color = TextPrimary, textAlign = TextAlign.Center, lineHeight = 26.sp
                         )
+
+                        // ── Note IMDb si disponible ───────────────────────────
+                        omdbMovie?.rating?.let { rating ->
+                            if (rating != "N/A") {
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.Center
+                                ) {
+                                    Text("⭐", fontSize = 12.sp)
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "$rating / 10",
+                                        fontSize = 13.sp,
+                                        color = BrownMid,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                            }
+                        }
+
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(horizontalArrangement = Arrangement.Center, modifier = Modifier.fillMaxWidth()) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
                             if (film.annee != 0) {
                                 Chip("📅 ${film.annee}")
                                 Spacer(modifier = Modifier.width(8.dp))
                             }
                             if (film.genre.isNotEmpty()) Chip("🎭 ${film.genre}")
                         }
+
+                        // ── Synopsis si disponible ────────────────────────────
+                        omdbMovie?.plot?.let { plot ->
+                            if (plot != "N/A") {
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = plot,
+                                    fontSize = 13.sp,
+                                    color = TextSecondary,
+                                    textAlign = TextAlign.Center,
+                                    lineHeight = 19.sp,
+                                    modifier = Modifier.padding(horizontal = 8.dp)
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            // ── Section : Owners ───────────────────────────
+            // ── Section Owners ────────────────────────────────────────────────
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
-                    text = "CURRENT OWNERS", // ← Traduit
+                    text = "CURRENT OWNERS",
                     fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                     color = BrownLight, letterSpacing = 2.sp,
                     modifier = Modifier.padding(horizontal = 20.dp)
@@ -162,9 +264,10 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
 
             if (isLoading) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = BrownMid)
-                    }
+                    Box(
+                        modifier = Modifier.fillMaxWidth().padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) { CircularProgressIndicator(color = BrownMid) }
                 }
             } else {
                 if (ownersOnDvd.isEmpty()) {
@@ -173,11 +276,10 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                     items(ownersOnDvd) { username -> UserRow(username, "📀") }
                 }
 
-                // ── Section : For Sale ────────────────
                 item {
                     Spacer(modifier = Modifier.height(20.dp))
                     Text(
-                        text = "MARKETPLACE / FOR SALE", // ← Traduit
+                        text = "MARKETPLACE / FOR SALE",
                         fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
                         color = BrownLight, letterSpacing = 2.sp,
                         modifier = Modifier.padding(horizontal = 20.dp)
@@ -186,7 +288,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
 
                 if (ownersWantingToSell.isEmpty()) {
-                    item { EmptyState("No user wants to sell this movie.") } // ← Traduit
+                    item { EmptyState("No user wants to sell this movie.") }
                 } else {
                     items(ownersWantingToSell) { username -> UserRow(username, "🏷️") }
                 }
@@ -196,6 +298,8 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
         }
     }
 }
+
+// ── Composables utilitaires (inchangés) ───────────────────────────────────────
 
 @Composable
 private fun Chip(label: String) {

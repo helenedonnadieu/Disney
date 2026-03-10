@@ -34,11 +34,13 @@ private val BrownLight    = Color(0xFFA67C5B)
 private val TextPrimary   = Color(0xFF2E1F14)
 private val TextSecondary = Color(0xFF8C7060)
 
+
 data class Film(
     val titre: String = "",
     val annee: Int = 0,
     val genre: String = "",
-    val numero: Int = 0
+    val numero: Int = 0,
+    val imdbID: String? = null   // ← ajoute cette ligne
 )
 
 data class SousSaga(
@@ -83,7 +85,9 @@ fun FilmListScreen(
                                         titre = film.child("titre").getValue(String::class.java) ?: "",
                                         annee = film.child("annee").getValue(Int::class.java) ?: 0,
                                         genre = film.child("genre").getValue(String::class.java) ?: "",
-                                        numero = film.child("numero").getValue(Int::class.java) ?: 0
+                                        numero = film.child("numero").getValue(Int::class.java) ?: 0,
+                                        imdbID = film.child("imdbID").getValue(String::class.java)  // ← ajoute ça
+
                                     ))
                                 }
                                 sagaList.add(SousSaga(sagaNom, films))
@@ -95,7 +99,8 @@ fun FilmListScreen(
                                     titre = film.child("titre").getValue(String::class.java) ?: "",
                                     annee = film.child("annee").getValue(Int::class.java) ?: 0,
                                     genre = film.child("genre").getValue(String::class.java) ?: "",
-                                    numero = film.child("numero").getValue(Int::class.java) ?: 0
+                                    numero = film.child("numero").getValue(Int::class.java) ?: 0,
+                                    imdbID = film.child("imdbID").getValue(String::class.java)  // ← ajoute ça
                                 ))
                             }
                             sagaList.add(SousSaga(franchiseName, films))
