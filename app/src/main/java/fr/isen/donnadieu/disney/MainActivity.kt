@@ -11,6 +11,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -87,7 +89,8 @@ class MainActivity : ComponentActivity() {
                                 onBack = { navController.popBackStack() } // ← AJOUTÉ
                             )
                         }
-
+//                        val context = LocalContext.current
+//                        Text(context.getString(R.string.app_name), color = colorResource(R.color.purple_200))
                         composable("register") {
                             RegisterScreen(
                                 viewModel = viewModel,

@@ -51,12 +51,13 @@ data class SousSaga(
 fun FilmListScreen(
     franchiseName: String,
     onBack: () -> Unit,
-    onRequireLogin: () -> Unit // Gère la redirection si non connecté
+    onRequireLogin: () -> Unit
 ) {
     val statusViewModel: FilmStatusViewModel = viewModel()
     var sousSagas by remember { mutableStateOf<List<SousSaga>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var selectedFilm by remember { mutableStateOf<Film?>(null) }
+    var sortByDate by remember { mutableStateOf(false) }
 
     selectedFilm?.let { film ->
         FilmDetailScreen(film = film, onBack = { selectedFilm = null })
@@ -115,18 +116,41 @@ fun FilmListScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
-                    .padding(top = 48.dp, bottom = 16.dp, start = 8.dp, end = 16.dp)
+                    .padding(top = 48.dp, bottom = 16.dp, start = 8.dp, end = 8.dp)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark)
+                        }
+                        Text(
+                            text = franchiseName,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = TextPrimary
+                        )
                     }
-                    Text(
-                        text = franchiseName,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary
-                    )
+
+                    // Bouton de tri
+                    Box(
+                        modifier = Modifier
+                            .padding(end = 8.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (sortByDate) BrownMid else Beige300)
+                            .clickable { sortByDate = !sortByDate }
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            text = if (sortByDate) "🗓 Date" else "Sort by Date",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (sortByDate) Color.White else BrownMid
+                        )
+                    }
                 }
             }
 
@@ -151,12 +175,15 @@ fun FilmListScreen(
                                 modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)
                             )
                         }
-                        items(saga.films) { film ->
+                        items(
+                            if (sortByDate) saga.films.sortedByDescending { it.annee }
+                            else saga.films.sortedBy { it.numero }
+                        ) { film ->
                             FilmCard(
                                 film = film,
                                 statusViewModel = statusViewModel,
                                 onFilmClick = { selectedFilm = film },
-                                onRequireLogin = onRequireLogin // Transmission de la fonction
+                                onRequireLogin = onRequireLogin
                             )
                         }
                     }
@@ -179,7 +206,6 @@ fun FilmCard(
     val currentStatus = statuses[key]
     var showMenu by remember { mutableStateOf(false) }
 
-    // Labels traduits en anglais
     val statusLabels = mapOf(
         "watched"       to "✓ Watched",
         "want_to_watch" to "♡ Watchlist",
@@ -207,7 +233,7 @@ fun FilmCard(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = "${film.numero}. ${film.titre}",
+                text = film.titre,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 14.sp,
                 color = TextPrimary
@@ -239,7 +265,6 @@ fun FilmCard(
                             else Beige200
                         )
                         .clickable {
-                            // Vérification cruciale : l'utilisateur est-il connecté ?
                             if (auth.currentUser != null) {
                                 showMenu = true
                             } else {

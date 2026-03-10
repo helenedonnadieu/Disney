@@ -9,6 +9,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -42,6 +43,12 @@ data class Franchise(val nom: String = "")
 fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
     var franchises by remember { mutableStateOf<List<Franchise>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var searchQuery by remember { mutableStateOf("") }
+
+    val filteredFranchises = remember(franchises, searchQuery) {
+        if (searchQuery.isBlank()) franchises
+        else franchises.filter { it.nom.contains(searchQuery, ignoreCase = true) }
+    }
 
     LaunchedEffect(Unit) {
         val db = FirebaseDatabase.getInstance().getReference("categories")
@@ -63,7 +70,7 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
 
     Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // --- HEADER AGRANDI ---
+            // --- HEADER ---
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -82,15 +89,49 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                         contentScale = ContentScale.Crop
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        text = "",
-                        fontSize = 14.sp,
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+                    // --- BARRE DE RECHERCHE ---
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 10.dp, bottom = 10.dp, end = 16.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            placeholder = {
+                                Text(
+                                    text = "Rechercher…",
+                                    fontSize = 12.sp,
+                                    color = TextSecondary
+                                )
+                            },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = Icons.Default.Search,
+                                    contentDescription = null,
+                                    tint = BrownLight,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            },
+                            singleLine = true,
+                            shape = RoundedCornerShape(12.dp),
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 13.sp,
+                                color = Color.Black
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White,
+                                unfocusedContainerColor = Color.White,
+                                focusedBorderColor = BrownMid,
+                                unfocusedBorderColor = Beige300,
+                                cursorColor = BrownMid,
+                                focusedTextColor = Color.Black,
+                                unfocusedTextColor = Color.Black
+                            ),
+                            modifier = Modifier.width(200.dp)
+                        )
+                    }
                 }
             }
 
@@ -99,18 +140,12 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                     CircularProgressIndicator(color = BrownMid)
                 }
             } else {
-                Text(
-                    text = "${franchises.size} FRANCHISES",
-                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold, color = BrownLight,
-                    letterSpacing = 2.sp, modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp)
-                )
-
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
                     contentPadding = PaddingValues(bottom = 16.dp)
                 ) {
-                    items(franchises) { franchise ->
+                    items(filteredFranchises) { franchise ->
                         FranchiseCard(
                             franchise = franchise,
                             onClick = { onFranchiseClick(franchise.nom) }
@@ -142,7 +177,6 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                     .background(Beige200),
                 contentAlignment = Alignment.Center
             ) {
-                // Ici, j'ai supprimé le .padding(4.dp) et mis ContentScale.Crop pour remplir le carré
                 when (franchise.nom) {
                     "Star Wars","Indiana Jones" -> {
                         Image(painter = painterResource(id = R.drawable.lucas_film), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
