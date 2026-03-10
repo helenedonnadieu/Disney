@@ -35,11 +35,8 @@ fun ProfileScreen(onLogout: () -> Unit) {
     var ownedFilmKeys by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var filmToDelete by remember { mutableStateOf<String?>(null) }
+    var userPseudo by remember { mutableStateOf<String?>(null) } // null = pas encore chargé
 
-    // ÉTAT POUR LE PSEUDO RÉCUPÉRÉ EN BASE DE DONNÉES
-    var userPseudo by remember { mutableStateOf("Chargement...") }
-
-    // Couleurs depuis les ressources
     val beige100 = colorResource(R.color.Beige100)
     val beige200 = colorResource(R.color.Beige200)
     val beige300 = colorResource(R.color.Beige300)
@@ -50,19 +47,37 @@ fun ProfileScreen(onLogout: () -> Unit) {
     val brownDark = colorResource(R.color.BrownDark)
     val errorRed = Color(0xFFB85C52)
 
+    // Texte affiché : pseudo si dispo, sinon email, sinon "Utilisateur"
+    val displayName = userPseudo
+        ?: currentUser.displayName?.takeIf { it.isNotBlank() }
+        ?: currentUser.email?.substringBefore("@")
+        ?: "Utilisateur"
+
+    // Initiale : toujours basée sur displayName (jamais "?")
+    val initiale = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+
     LaunchedEffect(userId) {
         val db = FirebaseDatabase.getInstance()
 
-        // 1. RÉCUPÉRATION DU PSEUDO (Vérifiez si votre clé est "pseudo" ou "username")
+        // Essai avec "pseudo", puis "username" en fallback
         db.getReference("users/$userId/pseudo")
             .get().addOnSuccessListener { snapshot ->
-                val fetchedPseudo = snapshot.getValue(String::class.java)
-                userPseudo = fetchedPseudo ?: (currentUser.displayName ?: "Utilisateur")
+                val fetched = snapshot.getValue(String::class.java)
+                if (!fetched.isNullOrBlank()) {
+                    userPseudo = fetched
+                } else {
+                    // Essai avec "username"
+                    db.getReference("users/$userId/username")
+                        .get().addOnSuccessListener { snap2 ->
+                            val fetched2 = snap2.getValue(String::class.java)
+                            userPseudo = fetched2?.takeIf { it.isNotBlank() }
+                                ?: currentUser.displayName?.takeIf { it.isNotBlank() }
+                        }
+                }
             }.addOnFailureListener {
-                userPseudo = currentUser.displayName ?: "Utilisateur"
+                userPseudo = currentUser.displayName?.takeIf { it.isNotBlank() }
             }
 
-        // 2. RÉCUPÉRATION DES FILMS
         db.getReference("user_films/$userId")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
@@ -78,7 +93,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
             })
     }
 
-    // Dialogue de suppression
     filmToDelete?.let { key ->
         AlertDialog(
             onDismissRequest = { filmToDelete = null },
@@ -109,7 +123,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {
-            // ── Header (Pseudo & Email) ──
             item {
                 Box(
                     modifier = Modifier
@@ -119,10 +132,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-
-                        // L'initiale basée sur le pseudo récupéré
-                        val initiale = userPseudo.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
-
                         Box(
                             modifier = Modifier
                                 .size(76.dp)
@@ -140,9 +149,8 @@ fun ProfileScreen(onLogout: () -> Unit) {
 
                         Spacer(modifier = Modifier.height(14.dp))
 
-                        // AFFICHAGE DU PSEUDO (Variable userPseudo)
                         Text(
-                            text = userPseudo,
+                            text = displayName,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = textPrimary
@@ -150,7 +158,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
 
                         Spacer(modifier = Modifier.height(4.dp))
 
-                        // Email en petit (facultatif)
                         Text(
                             text = currentUser.email ?: "",
                             fontSize = 13.sp,
@@ -160,7 +167,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
                 }
             }
 
-            // ── Compteur ──
             item {
                 Box(
                     modifier = Modifier
@@ -196,7 +202,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
                 )
             }
 
-            // ── Liste des films ──
             if (isLoading) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
@@ -250,7 +255,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
             }
         }
 
-        // ── Bouton Log out ──
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
