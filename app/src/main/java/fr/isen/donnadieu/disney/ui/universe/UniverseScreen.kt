@@ -142,7 +142,7 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                     .background(Beige200),
                 contentAlignment = Alignment.Center
             ) {
-                // Ici, j'ai supprimé le .padding(4.dp) et mis ContentScale.Crop pour remplir le carré
+
                 when (franchise.nom) {
                     "Star Wars","Indiana Jones" -> {
                         Image(painter = painterResource(id = R.drawable.lucas_film), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.fillMaxSize())
