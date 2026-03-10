@@ -144,7 +144,24 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                             modifier = Modifier.fillMaxSize().padding(4.dp)
                         )
                     }
-                    "X-Men Cinematic Universe","Spider-Man" -> {
+                    "Anna et Viktor","Hamilton","Les Football Kings","Lili, la Petite Sorcière","Risto Räppääjä","Les Instables"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.buena_vista),
+                            contentDescription = "buena vista Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "The Last Warrior"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.disney),
+                            contentDescription = "disney Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+
+                    "X-Men Cinematic Universe","Spider-Man","Blade","Les Quatre Fantastiques","Men in Black" -> {
                         Image(
                             painter = painterResource(id = R.drawable.marvel),
                             contentDescription = "Marvel Logo",
@@ -152,7 +169,47 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                             modifier = Modifier.fillMaxSize().padding(4.dp)
                         )
                     }
-                    "Pirates des Caraïbes","Flubber","La Coccinelle","Tron","Benjamin Gates","Dexter Riley","Freaky Friday","L'incroyable Voyage","La Montagne Ensorcelée","Le Monde de Narnia","Les Petits Champions","Shaggy Dog","Super Noël" -> {
+                    "Les Muppets"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.the_muppets_studio),
+                            contentDescription = "the muppets studio Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Charlie Chan","Baaghi","Les Cavaliers de la Sauge Pourprée","Quirt & Flagg"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.fox_film),
+                            contentDescription = "fox film Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Ernest","Sexy Dance"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.touch_stone),
+                            contentDescription = "touch stone Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Trois Couleurs"-> {
+                        Image(
+                            painter = painterResource(id = R.drawable.miramax),
+                            contentDescription = "miramax Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Highlander","Halloween","Scary Movie","Scream","Spy Kids" -> {
+                        Image(
+                            painter = painterResource(id = R.drawable.dimension_film),
+                            contentDescription = "dimension film Logo",
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.fillMaxSize().padding(4.dp)
+                        )
+                    }
+                    "Pirates des Caraïbes","Flubber","Kingsman","La Coccinelle","Tron","Benjamin Gates","Dexter Riley","Freaky Friday","L'Incroyable Voyage","La Montagne Ensorcelée","Le Monde de Narnia","Les Petits Champions","Shaggy Dog","Super Noël" -> {
                         Image(
                             painter = painterResource(id = R.drawable.walt_disney),
                             contentDescription = "walt disney Logo",
@@ -160,7 +217,7 @@ fun FranchiseCard(franchise: Franchise, onClick: () -> Unit) {
                             modifier = Modifier.fillMaxSize().padding(4.dp)
                         )
                     }
-                    "La Planète des Singes", "Alien et Predator", "Die Hard", "Avatar","Alvin et les Chipmunks","Big Mamma","Cisco Kid","Docteur Dolittle","Flicka","Hercule Poirot","Independence Day","Jones Family","Journal d'un Dégonflé","Kigsman","L'inspecteur Hornleigh","La Malédiction","La Mouche", "La Nuit au Musée", "Le Labyrinthe","Maman, J'ai Raté l'Avion","Michael Shayne","Mr. Belvédère","Mr. Moto","Percy Jackson","Porky's","Taken","Treize à la Douzaine"-> {
+                    "La Planète des Singes", "Alien et Predator", "Die Hard", "Avatar","Alvin et les Chipmunks","Big Mamma","Cisco Kid","Docteur Dolittle","Flicka","Hercule Poirot","Independence Day","Jones Family","Journal d'un Dégonflé","Kigsman","L'Inspecteur Hornleigh","La Malédiction","La Mouche", "La Nuit au Musée", "Le Labyrinthe","Maman, J'ai Raté l'Avion","Michael Shayne","Mr. Belvédère","Mr. Moto","Percy Jackson","Porky's","Taken","Treize à la Douzaine"-> {
                         Image(
                             painter = painterResource(id = R.drawable.century_fox),
                             contentDescription = "20th Century Fox Logo",
