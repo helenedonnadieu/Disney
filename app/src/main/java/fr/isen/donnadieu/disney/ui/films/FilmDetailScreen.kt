@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -37,7 +38,6 @@ private val BrownLight    = Color(0xFFA67C5B)
 private val TextPrimary   = Color(0xFF2E1F14)
 private val TextSecondary = Color(0xFF8C7060)
 
-// ── Retrofit singleton ────────────────────────────────────────────────────────
 private val omdbApi: OmdbApi by lazy {
     Retrofit.Builder()
         .baseUrl("https://www.omdbapi.com/")
@@ -53,16 +53,13 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
     var ownersOnDvd         by remember { mutableStateOf<List<String>>(emptyList()) }
     var ownersWantingToSell by remember { mutableStateOf<List<String>>(emptyList()) }
     var isLoading           by remember { mutableStateOf(true) }
-
-    // ── État OMDb ─────────────────────────────────────────────────────────────
-    var omdbMovie   by remember { mutableStateOf<OmdbMovie?>(null) }
-    var omdbLoading by remember { mutableStateOf(false) }
+    var omdbMovie           by remember { mutableStateOf<OmdbMovie?>(null) }
+    var omdbLoading         by remember { mutableStateOf(false) }
 
     val filmKey = film.titre
         .replace(".", "").replace("#", "")
         .replace("$", "").replace("[", "").replace("]", "")
 
-    // ── Chargement Firebase ───────────────────────────────────────────────────
     LaunchedEffect(filmKey) {
         val db = FirebaseDatabase.getInstance().reference
         db.child("user_films")
@@ -109,7 +106,6 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
             })
     }
 
-    // ── Chargement OMDb (seulement si imdbID disponible) ─────────────────────
     LaunchedEffect(film.imdbID) {
         val id = film.imdbID
         if (id.isNullOrBlank() || id == "N/A") return@LaunchedEffect
@@ -118,17 +114,15 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
             val result = omdbApi.getMovieById(imdbId = id, apiKey = "f3553feb")
             omdbMovie = result
         } catch (e: Exception) {
-            // Pas de poster disponible, on garde null
+            // pas de poster
         } finally {
             omdbLoading = false
         }
     }
 
-    // ── UI ────────────────────────────────────────────────────────────────────
     Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         LazyColumn(modifier = Modifier.fillMaxSize()) {
 
-            // ── Header ────────────────────────────────────────────────────────
             item {
                 Box(
                     modifier = Modifier
@@ -136,6 +130,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                         .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
                         .padding(top = 48.dp, bottom = 32.dp, start = 20.dp, end = 20.dp)
                 ) {
+                    // Bouton retour
                     IconButton(
                         onClick = onBack,
                         modifier = Modifier
@@ -153,66 +148,68 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             .padding(top = 52.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-
-                        // ── Poster OMDb ───────────────────────────────────────
+                        // ── Poster grand format ───────────────────────────────
                         val posterUrl = omdbMovie?.posterUrl
-                        if (omdbLoading) {
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 120.dp, height = 178.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(BrownMid.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                CircularProgressIndicator(
-                                    color = BrownMid,
-                                    modifier = Modifier.size(28.dp),
-                                    strokeWidth = 2.dp
+                        val posterModifier = Modifier
+                            .fillMaxWidth(0.65f)
+                            .aspectRatio(2f / 3f)
+                            .shadow(12.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
+
+                        when {
+                            omdbLoading -> {
+                                Box(
+                                    modifier = posterModifier.background(BrownMid.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        color = BrownMid,
+                                        modifier = Modifier.size(36.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                }
+                            }
+                            !posterUrl.isNullOrBlank() && posterUrl != "N/A" -> {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(posterUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = film.titre,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = posterModifier
                                 )
                             }
-                        } else if (!posterUrl.isNullOrBlank() && posterUrl != "N/A") {
-                            AsyncImage(
-                                model = ImageRequest.Builder(LocalContext.current)
-                                    .data(posterUrl)
-                                    .crossfade(true)
-                                    .build(),
-                                contentDescription = film.titre,
-                                contentScale = ContentScale.Crop,
-                                modifier = Modifier
-                                    .size(width = 120.dp, height = 178.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                            )
-                        } else {
-                            // Fallback emoji si pas de poster
-                            Box(
-                                modifier = Modifier
-                                    .size(width = 120.dp, height = 178.dp)
-                                    .clip(RoundedCornerShape(16.dp))
-                                    .background(BrownMid.copy(alpha = 0.15f)),
-                                contentAlignment = Alignment.Center
-                            ) { Text("🎬", fontSize = 48.sp) }
+                            else -> {
+                                Box(
+                                    modifier = posterModifier.background(BrownMid.copy(alpha = 0.15f)),
+                                    contentAlignment = Alignment.Center
+                                ) { Text("🎬", fontSize = 56.sp) }
+                            }
                         }
 
-                        Spacer(modifier = Modifier.height(14.dp))
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Titre
                         Text(
                             text = film.titre,
                             fontSize = 20.sp, fontWeight = FontWeight.Bold,
                             color = TextPrimary, textAlign = TextAlign.Center, lineHeight = 26.sp
                         )
 
-                        // ── Note IMDb si disponible ───────────────────────────
+                        // Note IMDb
                         omdbMovie?.rating?.let { rating ->
                             if (rating != "N/A") {
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.Center
                                 ) {
-                                    Text("⭐", fontSize = 12.sp)
+                                    Text("⭐", fontSize = 13.sp)
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
                                         text = "$rating / 10",
-                                        fontSize = 13.sp,
+                                        fontSize = 14.sp,
                                         color = BrownMid,
                                         fontWeight = FontWeight.SemiBold
                                     )
@@ -220,7 +217,9 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Chips année / genre
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier.fillMaxWidth()
@@ -232,10 +231,10 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                             if (film.genre.isNotEmpty()) Chip("🎭 ${film.genre}")
                         }
 
-                        // ── Synopsis si disponible ────────────────────────────
+                        // Synopsis
                         omdbMovie?.plot?.let { plot ->
                             if (plot != "N/A") {
-                                Spacer(modifier = Modifier.height(12.dp))
+                                Spacer(modifier = Modifier.height(14.dp))
                                 Text(
                                     text = plot,
                                     fontSize = 13.sp,
@@ -250,7 +249,7 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
                 }
             }
 
-            // ── Section Owners ────────────────────────────────────────────────
+            // Section Owners
             item {
                 Spacer(modifier = Modifier.height(20.dp))
                 Text(
@@ -298,8 +297,6 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
         }
     }
 }
-
-// ── Composables utilitaires (inchangés) ───────────────────────────────────────
 
 @Composable
 private fun Chip(label: String) {
