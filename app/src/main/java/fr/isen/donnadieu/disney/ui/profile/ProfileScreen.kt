@@ -1,6 +1,7 @@
 package fr.isen.donnadieu.disney.ui.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,48 +33,56 @@ fun ProfileScreen(onLogout: () -> Unit) {
     val currentUser = auth.currentUser
     val userId = currentUser?.uid ?: return
 
-    var ownedFilmKeys by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
-    var filmToDelete by remember { mutableStateOf<String?>(null) }
-    var userPseudo by remember { mutableStateOf<String?>(null) } // null = pas encore chargé
+    var ownedFilmKeys     by remember { mutableStateOf<List<String>>(emptyList()) }
+    var watchlistFilmKeys by remember { mutableStateOf<List<String>>(emptyList()) }
+    var forSaleFilmKeys   by remember { mutableStateOf<List<String>>(emptyList()) }
+    var isLoading         by remember { mutableStateOf(true) }
+    var filmToDelete      by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(key, status)
+    var userPseudo        by remember { mutableStateOf<String?>(null) }
+    var selectedTab       by remember { mutableStateOf(0) }
 
-    val beige100 = colorResource(R.color.Beige100)
-    val beige200 = colorResource(R.color.Beige200)
-    val beige300 = colorResource(R.color.Beige300)
-    val brownMid = colorResource(R.color.BrownMid)
-    val textPrimary = colorResource(R.color.TextPrimary)
-    val textSecondary = colorResource(R.color.TextSecondary)
-    val brownLight = colorResource(R.color.BrownLight)
-    val brownDark = colorResource(R.color.BrownDark)
-    val errorRed = Color(0xFFB85C52)
+    val beige100     = colorResource(R.color.Beige100)
+    val beige200     = colorResource(R.color.Beige200)
+    val beige300     = colorResource(R.color.Beige300)
+    val brownMid     = colorResource(R.color.BrownMid)
+    val textPrimary  = colorResource(R.color.TextPrimary)
+    val textSecondary= colorResource(R.color.TextSecondary)
+    val brownLight   = colorResource(R.color.BrownLight)
+    val brownDark    = colorResource(R.color.BrownDark)
+    val errorRed     = Color(0xFFB85C52)
 
-    // Texte affiché : pseudo si dispo, sinon email, sinon "Utilisateur"
     val displayName = userPseudo
         ?: currentUser.displayName?.takeIf { it.isNotBlank() }
         ?: currentUser.email?.substringBefore("@")
         ?: "Utilisateur"
 
-    // Initiale : toujours basée sur displayName (jamais "?")
     val initiale = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+
+    val tabs = listOf(
+        Triple("📀", "Owned",     ownedFilmKeys.size),
+        Triple("♡",  "Watchlist", watchlistFilmKeys.size),
+        Triple("🏷️", "For Sale",  forSaleFilmKeys.size)
+    )
+
+    val currentList = when (selectedTab) {
+        0 -> ownedFilmKeys
+        1 -> watchlistFilmKeys
+        2 -> forSaleFilmKeys
+        else -> emptyList()
+    }
+
+    val currentEmoji = when (selectedTab) {
+        0 -> "🎬"; 1 -> "♡"; 2 -> "🏷️"; else -> "🎬"
+    }
 
     LaunchedEffect(userId) {
         val db = FirebaseDatabase.getInstance()
 
-        // Essai avec "pseudo", puis "username" en fallback
-        db.getReference("users/$userId/pseudo")
+        db.getReference("users/$userId/username")
             .get().addOnSuccessListener { snapshot ->
                 val fetched = snapshot.getValue(String::class.java)
-                if (!fetched.isNullOrBlank()) {
-                    userPseudo = fetched
-                } else {
-                    // Essai avec "username"
-                    db.getReference("users/$userId/username")
-                        .get().addOnSuccessListener { snap2 ->
-                            val fetched2 = snap2.getValue(String::class.java)
-                            userPseudo = fetched2?.takeIf { it.isNotBlank() }
-                                ?: currentUser.displayName?.takeIf { it.isNotBlank() }
-                        }
-                }
+                userPseudo = fetched?.takeIf { it.isNotBlank() }
+                    ?: currentUser.displayName?.takeIf { it.isNotBlank() }
             }.addOnFailureListener {
                 userPseudo = currentUser.displayName?.takeIf { it.isNotBlank() }
             }
@@ -81,25 +90,34 @@ fun ProfileScreen(onLogout: () -> Unit) {
         db.getReference("user_films/$userId")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val owned = mutableListOf<String>()
+                    val owned     = mutableListOf<String>()
+                    val watchlist = mutableListOf<String>()
+                    val forSale   = mutableListOf<String>()
                     for (child in snapshot.children) {
                         val status = child.child("status").getValue(String::class.java)
-                        if (status == "owned") owned.add(child.key ?: "")
+                        val key = child.key ?: continue
+                        when (status) {
+                            "owned"         -> owned.add(key)
+                            "want_to_watch" -> watchlist.add(key)
+                            "want_to_sell"  -> forSale.add(key)
+                        }
                     }
-                    ownedFilmKeys = owned
+                    ownedFilmKeys     = owned
+                    watchlistFilmKeys = watchlist
+                    forSaleFilmKeys   = forSale
                     isLoading = false
                 }
                 override fun onCancelled(error: DatabaseError) { isLoading = false }
             })
     }
 
-    filmToDelete?.let { key ->
+    filmToDelete?.let { (key, status) ->
         AlertDialog(
             onDismissRequest = { filmToDelete = null },
             shape = RoundedCornerShape(20.dp),
             containerColor = beige100,
             title = { Text("Retirer ce film ?", fontWeight = FontWeight.Bold, color = textPrimary) },
-            text = { Text("\"$key\" sera retiré de votre collection.", color = textSecondary) },
+            text = { Text("\"$key\" sera retiré de votre liste.", color = textSecondary) },
             confirmButton = {
                 TextButton(onClick = {
                     FirebaseDatabase.getInstance()
@@ -123,12 +141,13 @@ fun ProfileScreen(onLogout: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {
+            // ── Header ──
             item {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .background(Brush.verticalGradient(colors = listOf(beige300, beige200)))
-                        .padding(top = 56.dp, bottom = 36.dp),
+                        .padding(top = 56.dp, bottom = 24.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -139,76 +158,64 @@ fun ProfileScreen(onLogout: () -> Unit) {
                                 .background(brownMid),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = initiale,
-                                fontSize = 30.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = beige100
-                            )
+                            Text(text = initiale, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = beige100)
                         }
-
                         Spacer(modifier = Modifier.height(14.dp))
-
-                        Text(
-                            text = displayName,
-                            fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = textPrimary
-                        )
-
+                        Text(text = displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                         Spacer(modifier = Modifier.height(4.dp))
-
-                        Text(
-                            text = currentUser.email ?: "",
-                            fontSize = 13.sp,
-                            color = textSecondary
-                        )
+                        Text(text = currentUser.email ?: "", fontSize = 13.sp, color = textSecondary)
                     }
                 }
             }
 
+            // ── Onglets ──
             item {
-                Box(
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 16.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(beige200)
-                        .padding(vertical = 18.dp),
-                    contentAlignment = Alignment.Center
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("📀", fontSize = 22.sp)
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Text(
-                            text = "${ownedFilmKeys.size}",
-                            fontSize = 28.sp, fontWeight = FontWeight.ExtraBold, color = brownDark
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "owned film${if (ownedFilmKeys.size > 1) "s" else ""}",
-                            fontSize = 14.sp, color = textSecondary, fontWeight = FontWeight.Medium
-                        )
+                    tabs.forEachIndexed { index, (emoji, label, count) ->
+                        val isSelected = selectedTab == index
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isSelected) brownMid else beige200)
+                                .clickable { selectedTab = index }
+                                .padding(vertical = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(text = emoji, fontSize = 18.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = "$count",
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (isSelected) beige100 else brownDark
+                                )
+                                Text(
+                                    text = label,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    color = if (isSelected) beige100.copy(alpha = 0.8f) else textSecondary
+                                )
+                            }
+                        }
                     }
                 }
             }
 
-            item {
-                Text(
-                    text = "COLLECTION",
-                    fontSize = 11.sp, fontWeight = FontWeight.ExtraBold,
-                    color = brownLight, letterSpacing = 2.sp,
-                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
-                )
-            }
-
+            // ── Liste ──
             if (isLoading) {
                 item {
                     Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = brownMid)
                     }
                 }
-            } else if (ownedFilmKeys.isEmpty()) {
+            } else if (currentList.isEmpty()) {
                 item {
                     Box(
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
@@ -216,14 +223,19 @@ fun ProfileScreen(onLogout: () -> Unit) {
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "Votre collection est vide.",
+                            text = when (selectedTab) {
+                                0 -> "Votre collection est vide."
+                                1 -> "Votre watchlist est vide."
+                                2 -> "Aucun film à vendre."
+                                else -> ""
+                            },
                             textAlign = TextAlign.Center, color = textSecondary,
                             fontSize = 14.sp, lineHeight = 22.sp
                         )
                     }
                 }
             } else {
-                items(ownedFilmKeys) { filmKey ->
+                items(currentList) { filmKey ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -238,11 +250,14 @@ fun ProfileScreen(onLogout: () -> Unit) {
                             Box(
                                 modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(beige200),
                                 contentAlignment = Alignment.Center
-                            ) { Text("🎬", fontSize = 16.sp) }
+                            ) { Text(currentEmoji, fontSize = 16.sp) }
                             Spacer(modifier = Modifier.width(12.dp))
                             Text(text = filmKey, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textPrimary)
                         }
-                        IconButton(onClick = { filmToDelete = filmKey }, modifier = Modifier.size(36.dp)) {
+                        IconButton(
+                            onClick = { filmToDelete = Pair(filmKey, tabs[selectedTab].second) },
+                            modifier = Modifier.size(36.dp)
+                        ) {
                             Icon(
                                 imageVector = Icons.Default.Delete,
                                 contentDescription = "Retirer",
@@ -255,6 +270,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
             }
         }
 
+        // ── Bouton Log out ──
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
