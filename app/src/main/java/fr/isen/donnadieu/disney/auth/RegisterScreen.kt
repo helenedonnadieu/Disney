@@ -15,7 +15,7 @@ fun RegisterScreen(
     onGoToLogin: () -> Unit
 ) {
     var email by remember { mutableStateOf("") }
-    var username by remember { mutableStateOf("") }  // ← AJOUT
+    var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     val authState by viewModel.authState.collectAsState()
@@ -74,10 +74,10 @@ fun RegisterScreen(
 
         Button(
             onClick = {
-                if (password == confirm) viewModel.register(email, password, username)  // ← AJOUT username
+                if (password == confirm) viewModel.register(email, password, username)
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = authState !is AuthState.Loading && password == confirm && username.isNotBlank()  // ← username requis
+            enabled = authState !is AuthState.Loading && password == confirm && username.isNotBlank()
         ) {
             if (authState is AuthState.Loading) CircularProgressIndicator(modifier = Modifier.size(20.dp))
             else Text("S'inscrire")

@@ -114,7 +114,6 @@ fun FilmDetailScreen(film: Film, onBack: () -> Unit) {
             val result = omdbApi.getMovieById(imdbId = id, apiKey = "f3553feb")
             omdbMovie = result
         } catch (e: Exception) {
-            // pas de poster
         } finally {
             omdbLoading = false
         }
