@@ -1,12 +1,18 @@
 package fr.isen.donnadieu.disney.ui.universe
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Search
@@ -15,6 +21,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -37,15 +46,14 @@ private val BrownLight    = Color(0xFFA67C5B)
 private val TextPrimary   = Color(0xFF2E1F14)
 private val TextSecondary = Color(0xFF8C7060)
 
-// ── Couleurs par catégorie ────────────────────────────────────────────────────
 private val CategoryColors = mapOf(
-    "Grandes Sagas"                      to Color(0xFFD4A017), // Doré
-    "Autres Franchises Disney"           to Color(0xFF1565C0), // Bleu Disney
-    "Autres Franchises 20th Century Studios" to Color(0xFFC62828), // Rouge Fox
-    "Autres Franchises Marvel"           to Color(0xFFB71C1C), // Rouge Marvel
-    "Touchstone"                         to Color(0xFF2E7D32), // Vert
-    "Dimension"                          to Color(0xFF6A1B9A), // Violet
-    "Franchises Internationales"         to Color(0xFF00838F)  // Teal
+    "Grandes Sagas"                          to Color(0xFFD4A017),
+    "Autres Franchises Disney"               to Color(0xFF1565C0),
+    "Autres Franchises 20th Century Studios" to Color(0xFFC62828),
+    "Autres Franchises Marvel"               to Color(0xFFB71C1C),
+    "Touchstone"                             to Color(0xFF2E7D32),
+    "Dimension"                              to Color(0xFF6A1B9A),
+    "Franchises Internationales"             to Color(0xFF00838F)
 )
 
 data class Franchise(val nom: String = "", val categorie: String = "")
@@ -53,11 +61,11 @@ data class CategorieGroup(val nom: String, val franchises: List<Franchise>)
 
 @Composable
 fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
-    var categories by remember { mutableStateOf<List<CategorieGroup>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var categories  by remember { mutableStateOf<List<CategorieGroup>>(emptyList()) }
+    var isLoading   by remember { mutableStateOf(true) }
     var searchQuery by remember { mutableStateOf("") }
+    var searchFocused by remember { mutableStateOf(false) }
 
-    // Si recherche active → liste plate filtrée, sinon → groupes par catégorie
     val filteredCategories = remember(categories, searchQuery) {
         if (searchQuery.isBlank()) categories
         else categories.map { group ->
@@ -91,49 +99,99 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
     Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── Header ────────────────────────────────────────────────────────
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
-            ) {
-                Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally
+            // ── Header compact ────────────────────────────────────────────────
+            Box(modifier = Modifier.fillMaxWidth()) {
+
+                // Banner réduit à 120dp
+                Image(
+                    painter = painterResource(id = R.drawable.disney_banner),
+                    contentDescription = "Disney Universe Banner",
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Dégradé sombre en bas du banner pour lisibilité
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f))
+                            )
+                        )
+                )
+
+                // Barre de recherche qui chevauche le banner (overlap)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .align(Alignment.BottomCenter)
+                        .offset(y = 26.dp)  // ← dépasse sur le contenu en dessous
                 ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.disney_banner),
-                        contentDescription = "Disney Universe Banner",
-                        modifier = Modifier.fillMaxWidth().height(180.dp),
-                        contentScale = ContentScale.Crop
+                    val borderColor by animateColorAsState(
+                        targetValue = if (searchFocused) BrownMid else Color.Transparent,
+                        animationSpec = tween(200), label = "border"
                     )
-                    // ── Barre de recherche pleine largeur ─────────────────────
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = {
-                            Text("Rechercher une franchise…", fontSize = 13.sp, color = TextSecondary)
-                        },
-                        leadingIcon = {
-                            Icon(Icons.Default.Search, contentDescription = null,
-                                tint = BrownLight, modifier = Modifier.size(18.dp))
-                        },
-                        singleLine = true,
-                        shape = RoundedCornerShape(14.dp),
-                        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 13.sp, color = BrownDark),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = Color.White,
-                            focusedBorderColor = BrownMid,
-                            unfocusedBorderColor = Beige300,
-                            cursorColor = BrownMid
-                        ),
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 16.dp, vertical = 12.dp)
-                    )
+                            .shadow(8.dp, RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(Color.White)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = null,
+                            tint = if (searchFocused) BrownMid else BrownLight,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            singleLine = true,
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                fontSize = 14.sp,
+                                color = BrownDark,
+                                fontWeight = FontWeight.Medium
+                            ),
+                            decorationBox = { inner ->
+                                if (searchQuery.isEmpty()) {
+                                    Text(
+                                        "Rechercher une franchise…",
+                                        fontSize = 14.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                                inner()
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .onFocusChanged { searchFocused = it.isFocused }
+                        )
+                        if (searchQuery.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(Beige300)
+                                    .clickable { searchQuery = "" },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("×", fontSize = 14.sp, color = BrownDark, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
+
+            // Espace pour compenser l'overlap de la searchbar
+            Spacer(modifier = Modifier.height(38.dp))
 
             if (isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -143,12 +201,11 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(bottom = 90.dp, top = 8.dp)
+                    contentPadding = PaddingValues(bottom = 90.dp, top = 4.dp)
                 ) {
                     filteredCategories.forEach { group ->
                         val accentColor = CategoryColors[group.nom] ?: BrownMid
 
-                        // ── Label catégorie ───────────────────────────────────
                         item {
                             Spacer(modifier = Modifier.height(10.dp))
                             Row(
@@ -157,8 +214,7 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                             ) {
                                 Box(
                                     modifier = Modifier
-                                        .width(4.dp)
-                                        .height(18.dp)
+                                        .width(4.dp).height(18.dp)
                                         .clip(RoundedCornerShape(2.dp))
                                         .background(accentColor)
                                 )
@@ -170,10 +226,24 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
                                     color = accentColor,
                                     letterSpacing = 1.5.sp
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                // Nombre de franchises dans la catégorie
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(accentColor.copy(alpha = 0.12f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text(
+                                        text = "${group.franchises.size}",
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = accentColor
+                                    )
+                                }
                             }
                         }
 
-                        // ── Franchises de la catégorie ────────────────────────
                         items(group.franchises) { franchise ->
                             FranchiseCard(
                                 franchise = franchise,
@@ -190,23 +260,41 @@ fun UniverseScreen(onFranchiseClick: (String) -> Unit) {
 
 @Composable
 fun FranchiseCard(franchise: Franchise, accentColor: Color, onClick: () -> Unit) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    // Animation au clic : légère réduction de taille
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = tween(100),
+        label = "scale"
+    )
+    // Animation couleur de fond au clic
+    val bgColor by animateColorAsState(
+        targetValue = if (isPressed) accentColor.copy(alpha = 0.06f) else Color.White,
+        animationSpec = tween(100),
+        label = "bg"
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .scale(scale)
+            .shadow(if (isPressed) 0.dp else 2.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White)
-            .clickable { onClick() }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .background(bgColor)
+            .clickable(interactionSource = interactionSource, indication = null) { onClick() }
+            .padding(horizontal = 14.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-            // ── Logo avec bordure colorée ─────────────────────────────────────
+            // Logo avec fond teinté
             Box(
                 modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(accentColor.copy(alpha = 0.08f)),
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(accentColor.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center
             ) {
                 when (franchise.nom) {
@@ -270,11 +358,20 @@ fun FranchiseCard(franchise: Franchise, accentColor: Color, onClick: () -> Unit)
             )
         }
 
-        Icon(
-            imageVector = Icons.Default.KeyboardArrowRight,
-            contentDescription = null,
-            tint = accentColor.copy(alpha = 0.6f),
-            modifier = Modifier.size(20.dp)
-        )
+        // Flèche avec fond coloré
+        Box(
+            modifier = Modifier
+                .size(28.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(accentColor.copy(alpha = if (isPressed) 0.20f else 0.10f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Default.KeyboardArrowRight,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(18.dp)
+            )
+        }
     }
 }

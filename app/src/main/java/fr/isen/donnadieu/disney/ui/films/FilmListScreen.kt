@@ -1,5 +1,6 @@
 package fr.isen.donnadieu.disney.ui.films
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -13,8 +14,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -24,6 +28,7 @@ import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.ValueEventListener
+import fr.isen.donnadieu.disney.R
 
 private val Beige100      = Color(0xFFF5F0E8)
 private val Beige200      = Color(0xFFEDE4D3)
@@ -34,13 +39,12 @@ private val BrownLight    = Color(0xFFA67C5B)
 private val TextPrimary   = Color(0xFF2E1F14)
 private val TextSecondary = Color(0xFF8C7060)
 
-
 data class Film(
     val titre: String = "",
     val annee: Int = 0,
     val genre: String = "",
     val numero: Int = 0,
-    val imdbID: String? = null   // ← ajoute cette ligne
+    val imdbID: String? = null
 )
 
 data class SousSaga(
@@ -56,10 +60,10 @@ fun FilmListScreen(
     onRequireLogin: () -> Unit
 ) {
     val statusViewModel: FilmStatusViewModel = viewModel()
-    var sousSagas by remember { mutableStateOf<List<SousSaga>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    var sousSagas   by remember { mutableStateOf<List<SousSaga>>(emptyList()) }
+    var isLoading   by remember { mutableStateOf(true) }
     var selectedFilm by remember { mutableStateOf<Film?>(null) }
-    var sortByDate by remember { mutableStateOf(false) }
+    var sortByDate  by remember { mutableStateOf(false) }
 
     selectedFilm?.let { film ->
         FilmDetailScreen(film = film, onBack = { selectedFilm = null })
@@ -82,12 +86,11 @@ fun FilmListScreen(
                                 val films = mutableListOf<Film>()
                                 for (film in sousSaga.child("films").children) {
                                     films.add(Film(
-                                        titre = film.child("titre").getValue(String::class.java) ?: "",
-                                        annee = film.child("annee").getValue(Int::class.java) ?: 0,
-                                        genre = film.child("genre").getValue(String::class.java) ?: "",
+                                        titre  = film.child("titre").getValue(String::class.java) ?: "",
+                                        annee  = film.child("annee").getValue(Int::class.java) ?: 0,
+                                        genre  = film.child("genre").getValue(String::class.java) ?: "",
                                         numero = film.child("numero").getValue(Int::class.java) ?: 0,
-                                        imdbID = film.child("imdbID").getValue(String::class.java)  // ← ajoute ça
-
+                                        imdbID = film.child("imdbID").getValue(String::class.java)
                                     ))
                                 }
                                 sagaList.add(SousSaga(sagaNom, films))
@@ -96,11 +99,11 @@ fun FilmListScreen(
                             val films = mutableListOf<Film>()
                             for (film in franchise.child("films").children) {
                                 films.add(Film(
-                                    titre = film.child("titre").getValue(String::class.java) ?: "",
-                                    annee = film.child("annee").getValue(Int::class.java) ?: 0,
-                                    genre = film.child("genre").getValue(String::class.java) ?: "",
+                                    titre  = film.child("titre").getValue(String::class.java) ?: "",
+                                    annee  = film.child("annee").getValue(Int::class.java) ?: 0,
+                                    genre  = film.child("genre").getValue(String::class.java) ?: "",
                                     numero = film.child("numero").getValue(Int::class.java) ?: 0,
-                                    imdbID = film.child("imdbID").getValue(String::class.java)  // ← ajoute ça
+                                    imdbID = film.child("imdbID").getValue(String::class.java)
                                 ))
                             }
                             sagaList.add(SousSaga(franchiseName, films))
@@ -114,47 +117,107 @@ fun FilmListScreen(
         })
     }
 
+    // Nombre total de films
+    val totalFilms = sousSagas.sumOf { it.films.size }
+
     Box(modifier = Modifier.fillMaxSize().background(Beige100)) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Brush.verticalGradient(colors = listOf(Beige300, Beige200)))
-                    .padding(top = 48.dp, bottom = 16.dp, start = 8.dp, end = 8.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+
+            // ── Header avec banner ────────────────────────────────────────────
+            Box(modifier = Modifier.fillMaxWidth()) {
+
+                // Banner Disney en fond réduit
+                Image(
+                    painter = painterResource(id = R.drawable.disney_banner),
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxWidth().height(140.dp),
+                    contentScale = ContentScale.Crop
+                )
+
+                // Dégradé sombre pour lisibilité
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(140.dp)
+                        .background(
+                            Brush.verticalGradient(
+                                colors = listOf(
+                                    Color.Black.copy(alpha = 0.45f),
+                                    Color.Black.copy(alpha = 0.15f)
+                                )
+                            )
+                        )
+                )
+
+                // Contenu du header par-dessus le banner
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 44.dp, start = 8.dp, end = 16.dp, bottom = 14.dp)
                 ) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Ligne 1 : retour + titre
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back", tint = BrownDark)
+                            Icon(
+                                Icons.Default.ArrowBack,
+                                contentDescription = "Back",
+                                tint = Color.White
+                            )
                         }
                         Text(
                             text = franchiseName,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = TextPrimary
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color.White
                         )
                     }
 
-                    // Bouton de tri
-                    Box(
+                    // Ligne 2 : compteur + bouton tri
+                    Row(
                         modifier = Modifier
-                            .padding(end = 8.dp)
-                            .clip(RoundedCornerShape(20.dp))
-                            .background(if (sortByDate) BrownMid else Beige300)
-                            .clickable { sortByDate = !sortByDate }
-                            .padding(horizontal = 12.dp, vertical = 6.dp)
+                            .fillMaxWidth()
+                            .padding(start = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = if (sortByDate) "🗓 Date" else "Sort by Date",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (sortByDate) Color.White else BrownMid
-                        )
+                        // Badge nombre de films
+                        if (!isLoading && totalFilms > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.White.copy(alpha = 0.20f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp)
+                            ) {
+                                Text(
+                                    text = "$totalFilms films",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            }
+                        }
+
+                        // Bouton tri
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(
+                                    if (sortByDate) BrownMid
+                                    else Color.White.copy(alpha = 0.20f)
+                                )
+                                .clickable { sortByDate = !sortByDate }
+                                .padding(horizontal = 12.dp, vertical = 5.dp)
+                        ) {
+                            Text(
+                                text = if (sortByDate) "🗓 Par date" else "↕ Par numéro",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.White
+                            )
+                        }
                     }
                 }
             }
@@ -167,19 +230,55 @@ fun FilmListScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
-                    contentPadding = PaddingValues(vertical = 12.dp)
+                    contentPadding = PaddingValues(bottom = 90.dp, top = 12.dp)
                 ) {
                     sousSagas.forEach { saga ->
+
+                        // ── Header sous-saga stylisé ──────────────────────────
                         item {
-                            Text(
-                                text = saga.nom.uppercase(),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = BrownLight,
-                                letterSpacing = 2.sp,
-                                modifier = Modifier.padding(top = 16.dp, bottom = 6.dp)
-                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(
+                                        Brush.horizontalGradient(
+                                            colors = listOf(BrownDark, BrownMid)
+                                        )
+                                    )
+                                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text(
+                                        text = saga.nom,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    // Compteur de films dans la sous-saga
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(6.dp))
+                                            .background(Color.White.copy(alpha = 0.18f))
+                                            .padding(horizontal = 7.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            text = "${saga.films.size} films",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.White.copy(alpha = 0.9f)
+                                        )
+                                    }
+                                }
+                            }
                         }
+
+                        // ── Films de la sous-saga ─────────────────────────────
                         items(
                             if (sortByDate) saga.films.sortedByDescending { it.annee }
                             else saga.films.sortedBy { it.numero }
@@ -207,15 +306,17 @@ fun FilmCard(
 ) {
     val auth = FirebaseAuth.getInstance()
     val statuses by statusViewModel.userFilmStatuses.collectAsState()
-    val key = film.titre.replace(".", "").replace("#", "").replace("$", "").replace("[", "").replace("]", "")
+    val key = film.titre
+        .replace(".", "").replace("#", "")
+        .replace("$", "").replace("[", "").replace("]", "")
     val currentStatus = statuses[key]
     var showMenu by remember { mutableStateOf(false) }
 
     val statusLabels = mapOf(
         "watched"       to "✓ Watched",
         "want_to_watch" to "♡ Watchlist",
-        "owned"         to "發 Owned",
-        "want_to_sell"  to "鴫 For Sale"
+        "owned"         to "📀 Owned",
+        "want_to_sell"  to "🏷️ For Sale"
     )
 
     val statusColor = when (currentStatus) {
@@ -229,13 +330,33 @@ fun FilmCard(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .shadow(1.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))
             .background(Color.White)
             .clickable { onFilmClick() }
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // Numéro du film
+        if (film.numero != 0) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(BrownMid.copy(alpha = 0.10f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = film.numero.toString().padStart(2, '0'),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = BrownMid
+                )
+            }
+            Spacer(modifier = Modifier.width(10.dp))
+        }
+
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = film.titre,
@@ -244,7 +365,7 @@ fun FilmCard(
                 color = TextPrimary
             )
             if (film.genre.isNotEmpty()) {
-                Text(text = film.genre, fontSize = 12.sp, color = TextSecondary)
+                Text(text = film.genre, fontSize = 11.sp, color = TextSecondary)
             }
         }
 
@@ -270,11 +391,8 @@ fun FilmCard(
                             else Beige200
                         )
                         .clickable {
-                            if (auth.currentUser != null) {
-                                showMenu = true
-                            } else {
-                                onRequireLogin()
-                            }
+                            if (auth.currentUser != null) showMenu = true
+                            else onRequireLogin()
                         }
                         .padding(horizontal = 10.dp, vertical = 6.dp)
                 ) {
@@ -305,11 +423,9 @@ fun FilmCard(
                         HorizontalDivider()
                         DropdownMenuItem(
                             text = {
-                                Text(
-                                    "🗑 Remove status",
+                                Text("🗑 Remove status",
                                     color = MaterialTheme.colorScheme.error,
-                                    fontSize = 14.sp
-                                )
+                                    fontSize = 14.sp)
                             },
                             onClick = {
                                 statusViewModel.removeFilmStatus(film.titre)
