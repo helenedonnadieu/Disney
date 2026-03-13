@@ -4,7 +4,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -14,15 +13,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import fr.isen.donnadieu.disney.R
@@ -30,7 +32,6 @@ import fr.isen.donnadieu.disney.data.api.OmdbApi
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
-// ── Singleton OMDb ────────────────────────────────────────────────────────────
 private val omdbApi: OmdbApi by lazy {
     Retrofit.Builder()
         .baseUrl("https://www.omdbapi.com/")
@@ -47,15 +48,13 @@ fun ProfileScreen(onLogout: () -> Unit) {
     val currentUser = auth.currentUser
     val userId = currentUser?.uid ?: return
 
-    // ← MODIFIÉ : Pair(clé, imdbID?)
     var ownedFilms     by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
     var watchlistFilms by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
     var forSaleFilms   by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
-
-    var isLoading    by remember { mutableStateOf(true) }
-    var filmToDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var userPseudo   by remember { mutableStateOf<String?>(null) }
-    var selectedTab  by remember { mutableStateOf(0) }
+    var isLoading      by remember { mutableStateOf(true) }
+    var filmToDelete   by remember { mutableStateOf<String?>(null) }
+    var userPseudo     by remember { mutableStateOf<String?>(null) }
+    var selectedTab    by remember { mutableStateOf(0) }
 
     val beige100      = colorResource(R.color.Beige100)
     val beige200      = colorResource(R.color.Beige200)
@@ -67,11 +66,11 @@ fun ProfileScreen(onLogout: () -> Unit) {
     val errorRed      = Color(0xFFB85C52)
 
     val displayName = userPseudo
+        ?: currentUser.displayName?.takeIf { it.isNotBlank() }
         ?: currentUser.email?.substringBefore("@")
         ?: "Utilisateur"
     val initiale = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
-    // ← MODIFIÉ : utilise les nouvelles listes
     val tabs = listOf(
         Triple("📀", "Owned",     ownedFilms.size),
         Triple("♡",  "Watchlist", watchlistFilms.size),
@@ -83,10 +82,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
         1 -> watchlistFilms
         2 -> forSaleFilms
         else -> emptyList()
-    }
-
-    val currentEmoji = when (selectedTab) {
-        0 -> "🎬"; 1 -> "♡"; 2 -> "🏷️"; else -> "🎬"
     }
 
     LaunchedEffect(userId) {
@@ -107,10 +102,8 @@ fun ProfileScreen(onLogout: () -> Unit) {
                     val owned     = mutableListOf<Pair<String, String?>>()
                     val watchlist = mutableListOf<Pair<String, String?>>()
                     val forSale   = mutableListOf<Pair<String, String?>>()
-
                     for (child in snapshot.children) {
                         val status = child.child("status").getValue(String::class.java)
-                        // ← MODIFIÉ : on lit aussi imdbID
                         val imdbID = child.child("imdbID").getValue(String::class.java)
                         val key    = child.key ?: continue
                         when (status) {
@@ -128,7 +121,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
             })
     }
 
-    filmToDelete?.let { (key, status) ->
+    filmToDelete?.let { key ->
         AlertDialog(
             onDismissRequest = { filmToDelete = null },
             shape = RoundedCornerShape(20.dp),
@@ -158,7 +151,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {
-            // ── Header ───────────────────────────────────────────────────────
+            // ── Header ──
             item {
                 Box(
                     modifier = Modifier
@@ -169,29 +162,23 @@ fun ProfileScreen(onLogout: () -> Unit) {
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(
-                            modifier = Modifier
-                                .size(76.dp)
-                                .clip(CircleShape)
-                                .background(brownMid),
+                            modifier = Modifier.size(76.dp).clip(CircleShape).background(brownMid),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = initiale, fontSize = 30.sp,
-                                fontWeight = FontWeight.Bold, color = beige100)
+                            Text(text = initiale, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = beige100)
                         }
                         Spacer(modifier = Modifier.height(14.dp))
-                        Text(text = displayName, fontSize = 22.sp,
-                            fontWeight = FontWeight.Bold, color = textPrimary)
+                        Text(text = displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                         Spacer(modifier = Modifier.height(4.dp))
+                        Text(text = currentUser.email ?: "", fontSize = 13.sp, color = textSecondary)
                     }
                 }
             }
 
-            // ── Onglets ───────────────────────────────────────────────────────
+            // ── Onglets ──
             item {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     tabs.forEachIndexed { index, (emoji, label, count) ->
@@ -208,11 +195,9 @@ fun ProfileScreen(onLogout: () -> Unit) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(text = emoji, fontSize = 18.sp)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(text = "$count", fontSize = 16.sp,
-                                    fontWeight = FontWeight.ExtraBold,
+                                Text("$count", fontSize = 16.sp, fontWeight = FontWeight.ExtraBold,
                                     color = if (isSelected) beige100 else brownDark)
-                                Text(text = label, fontSize = 10.sp,
-                                    fontWeight = FontWeight.Medium,
+                                Text(label, fontSize = 10.sp, fontWeight = FontWeight.Medium,
                                     color = if (isSelected) beige100.copy(alpha = 0.8f) else textSecondary)
                             }
                         }
@@ -220,21 +205,18 @@ fun ProfileScreen(onLogout: () -> Unit) {
                 }
             }
 
-            // ── Liste des films ───────────────────────────────────────────────
+            // ── Grille de posters ──
             if (isLoading) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp),
-                        contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = brownMid)
                     }
                 }
             } else if (currentList.isEmpty()) {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(beige200).padding(32.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp)).background(beige200).padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -250,82 +232,41 @@ fun ProfileScreen(onLogout: () -> Unit) {
                     }
                 }
             } else {
-                // ← MODIFIÉ : (filmKey, imdbID) au lieu de filmKey
-                items(currentList) { (filmKey, imdbID) ->
-
-                    // Charge le poster depuis OMDb
-                    var posterUrl by remember(imdbID) { mutableStateOf<String?>(null) }
-                    LaunchedEffect(imdbID) {
-                        if (!imdbID.isNullOrBlank() && imdbID != "N/A") {
-                            try {
-                                val result = omdbApi.getMovieById(imdbId = imdbID, apiKey = "f3553feb")
-                                if (result.posterUrl != "N/A") posterUrl = result.posterUrl
-                            } catch (_: Exception) {}
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 4.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(Color.White)
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)) {
-
-                            // ← NOUVEAU : poster ou emoji
-                            Box(
-                                modifier = Modifier
-                                    .size(52.dp)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(beige200),
-                                contentAlignment = Alignment.Center
+                item {
+                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        currentList.chunked(3).forEach { rowItems ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                if (posterUrl != null) {
-                                    AsyncImage(
-                                        model = posterUrl,
-                                        contentDescription = filmKey,
-                                        contentScale = ContentScale.Crop,
-                                        modifier = Modifier
-                                            .fillMaxSize()
-                                            .clip(RoundedCornerShape(10.dp))
-                                    )
-                                } else {
-                                    Text(currentEmoji, fontSize = 22.sp)
+                                rowItems.forEach { (filmKey, imdbID) ->
+                                    Box(modifier = Modifier.weight(1f).padding(horizontal = 2.dp)) {
+                                        PosterCard(
+                                            filmKey = filmKey,
+                                            imdbID = imdbID,
+                                            beige200 = beige200,
+                                            errorRed = errorRed,
+                                            onDelete = { filmToDelete = filmKey }
+                                        )
+                                    }
+                                }
+                                // Cases vides si ligne incomplète
+                                repeat(3 - rowItems.size) {
+                                    Spacer(modifier = Modifier.weight(1f))
                                 }
                             }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = filmKey, fontWeight = FontWeight.Medium,
-                                fontSize = 14.sp, color = textPrimary)
-                        }
-
-                        IconButton(
-                            onClick = { filmToDelete = Pair(filmKey, tabs[selectedTab].second) },
-                            modifier = Modifier.size(36.dp)
-                        ) {
-                            Icon(imageVector = Icons.Default.Delete,
-                                contentDescription = "Retirer",
-                                tint = errorRed.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp))
                         }
                     }
                 }
             }
         }
 
-        // ── Bouton Log out ────────────────────────────────────────────────────
+        // ── Log out ──
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(
-                    colors = listOf(Color.Transparent, beige100, beige100),
-                    startY = 0f, endY = 80f))
+                .background(Brush.verticalGradient(colors = listOf(Color.Transparent, beige100, beige100), startY = 0f, endY = 80f))
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             OutlinedButton(
@@ -338,5 +279,92 @@ fun ProfileScreen(onLogout: () -> Unit) {
                 Text("Log out", fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             }
         }
+    }
+}
+
+@Composable
+private fun PosterCard(
+    filmKey: String,
+    imdbID: String?,
+    beige200: Color,
+    errorRed: Color,
+    onDelete: () -> Unit
+) {
+    var posterUrl by remember(imdbID) { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(imdbID) {
+        if (!imdbID.isNullOrBlank() && imdbID != "N/A") {
+            try {
+                val omdb = Retrofit.Builder()
+                    .baseUrl("https://www.omdbapi.com/")
+                    .addConverterFactory(GsonConverterFactory.create())
+                    .build()
+                    .create(OmdbApi::class.java)
+                val result = omdb.getMovieById(imdbId = imdbID, apiKey = "f3553feb")
+                if (result.posterUrl != "N/A") posterUrl = result.posterUrl
+            } catch (_: Exception) {}
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .shadow(4.dp, RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .background(Color.White)
+    ) {
+        // ── Poster ──
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(2f / 3f)
+        ) {
+            if (posterUrl != null) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(posterUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = filmKey,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(beige200),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("🎬", fontSize = 28.sp)
+                }
+            }
+
+            // Bouton supprimer
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable { onDelete() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(imageVector = Icons.Default.Delete, contentDescription = "Retirer",
+                    tint = errorRed, modifier = Modifier.size(11.dp))
+            }
+        }
+
+        // ── Titre en dessous ──
+        Text(
+            text = filmKey,
+            fontSize = 9.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color(0xFF2E1F14),
+            maxLines = 2,
+            lineHeight = 12.sp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 6.dp, vertical = 5.dp)
+        )
     }
 }
