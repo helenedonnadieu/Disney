@@ -52,7 +52,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
     val errorRed     = Color(0xFFB85C52)
 
     val displayName = userPseudo
-        ?: currentUser.displayName?.takeIf { it.isNotBlank() }
         ?: currentUser.email?.substringBefore("@")
         ?: "Utilisateur"
 
@@ -163,7 +162,6 @@ fun ProfileScreen(onLogout: () -> Unit) {
                         Spacer(modifier = Modifier.height(14.dp))
                         Text(text = displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = textPrimary)
                         Spacer(modifier = Modifier.height(4.dp))
-                        Text(text = currentUser.email ?: "", fontSize = 13.sp, color = textSecondary)
                     }
                 }
             }
