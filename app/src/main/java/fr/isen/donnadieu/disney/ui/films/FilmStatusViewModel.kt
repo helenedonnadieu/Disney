@@ -36,10 +36,14 @@ class FilmStatusViewModel : ViewModel() {
             })
     }
 
-    fun setFilmStatus(filmTitre: String, status: String) {
+    fun setFilmStatus(filmTitre: String, status: String, imdbID: String? = null) {
         val userId = auth.currentUser?.uid ?: return
         val key = filmTitre.replace(".", "").replace("#", "").replace("$", "").replace("[", "").replace("]", "")
-        db.getReference("user_films/$userId/$key/status").setValue(status)
+        val ref = db.getReference("user_films/$userId/$key")
+        ref.child("status").setValue(status)
+        if (!imdbID.isNullOrBlank() && imdbID != "N/A") {
+            ref.child("imdbID").setValue(imdbID)
+        }
     }
 
     fun removeFilmStatus(filmTitre: String) {

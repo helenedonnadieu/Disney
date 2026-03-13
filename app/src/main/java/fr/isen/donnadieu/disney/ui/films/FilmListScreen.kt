@@ -414,7 +414,8 @@ fun FilmCard(
                         DropdownMenuItem(
                             text = { Text(label, fontSize = 14.sp) },
                             onClick = {
-                                statusViewModel.setFilmStatus(film.titre, statusKey)
+                                statusViewModel.setFilmStatus(film.titre, statusKey, film.imdbID)
+                                //statusViewModel.setFilmStatus(film.titre, statusKey)
                                 showMenu = false
                             }
                         )

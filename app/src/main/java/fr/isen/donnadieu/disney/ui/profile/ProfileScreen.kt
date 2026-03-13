@@ -16,14 +16,28 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 import fr.isen.donnadieu.disney.R
+import fr.isen.donnadieu.disney.data.api.OmdbApi
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
+
+// ── Singleton OMDb ────────────────────────────────────────────────────────────
+private val omdbApi: OmdbApi by lazy {
+    Retrofit.Builder()
+        .baseUrl("https://www.omdbapi.com/")
+        .addConverterFactory(GsonConverterFactory.create())
+        .build()
+        .create(OmdbApi::class.java)
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,40 +47,41 @@ fun ProfileScreen(onLogout: () -> Unit) {
     val currentUser = auth.currentUser
     val userId = currentUser?.uid ?: return
 
-    var ownedFilmKeys     by remember { mutableStateOf<List<String>>(emptyList()) }
-    var watchlistFilmKeys by remember { mutableStateOf<List<String>>(emptyList()) }
-    var forSaleFilmKeys   by remember { mutableStateOf<List<String>>(emptyList()) }
-    var isLoading         by remember { mutableStateOf(true) }
-    var filmToDelete      by remember { mutableStateOf<Pair<String, String>?>(null) } // Pair(key, status)
-    var userPseudo        by remember { mutableStateOf<String?>(null) }
-    var selectedTab       by remember { mutableStateOf(0) }
+    // ← MODIFIÉ : Pair(clé, imdbID?)
+    var ownedFilms     by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
+    var watchlistFilms by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
+    var forSaleFilms   by remember { mutableStateOf<List<Pair<String, String?>>>(emptyList()) }
 
-    val beige100     = colorResource(R.color.Beige100)
-    val beige200     = colorResource(R.color.Beige200)
-    val beige300     = colorResource(R.color.Beige300)
-    val brownMid     = colorResource(R.color.BrownMid)
-    val textPrimary  = colorResource(R.color.TextPrimary)
-    val textSecondary= colorResource(R.color.TextSecondary)
-    val brownLight   = colorResource(R.color.BrownLight)
-    val brownDark    = colorResource(R.color.BrownDark)
-    val errorRed     = Color(0xFFB85C52)
+    var isLoading    by remember { mutableStateOf(true) }
+    var filmToDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var userPseudo   by remember { mutableStateOf<String?>(null) }
+    var selectedTab  by remember { mutableStateOf(0) }
+
+    val beige100      = colorResource(R.color.Beige100)
+    val beige200      = colorResource(R.color.Beige200)
+    val beige300      = colorResource(R.color.Beige300)
+    val brownMid      = colorResource(R.color.BrownMid)
+    val textPrimary   = colorResource(R.color.TextPrimary)
+    val textSecondary = colorResource(R.color.TextSecondary)
+    val brownDark     = colorResource(R.color.BrownDark)
+    val errorRed      = Color(0xFFB85C52)
 
     val displayName = userPseudo
         ?: currentUser.email?.substringBefore("@")
         ?: "Utilisateur"
-
     val initiale = displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
 
+    // ← MODIFIÉ : utilise les nouvelles listes
     val tabs = listOf(
-        Triple("📀", "Owned",     ownedFilmKeys.size),
-        Triple("♡",  "Watchlist", watchlistFilmKeys.size),
-        Triple("🏷️", "For Sale",  forSaleFilmKeys.size)
+        Triple("📀", "Owned",     ownedFilms.size),
+        Triple("♡",  "Watchlist", watchlistFilms.size),
+        Triple("🏷️", "For Sale",  forSaleFilms.size)
     )
 
     val currentList = when (selectedTab) {
-        0 -> ownedFilmKeys
-        1 -> watchlistFilmKeys
-        2 -> forSaleFilmKeys
+        0 -> ownedFilms
+        1 -> watchlistFilms
+        2 -> forSaleFilms
         else -> emptyList()
     }
 
@@ -89,21 +104,24 @@ fun ProfileScreen(onLogout: () -> Unit) {
         db.getReference("user_films/$userId")
             .addValueEventListener(object : ValueEventListener {
                 override fun onDataChange(snapshot: DataSnapshot) {
-                    val owned     = mutableListOf<String>()
-                    val watchlist = mutableListOf<String>()
-                    val forSale   = mutableListOf<String>()
+                    val owned     = mutableListOf<Pair<String, String?>>()
+                    val watchlist = mutableListOf<Pair<String, String?>>()
+                    val forSale   = mutableListOf<Pair<String, String?>>()
+
                     for (child in snapshot.children) {
                         val status = child.child("status").getValue(String::class.java)
-                        val key = child.key ?: continue
+                        // ← MODIFIÉ : on lit aussi imdbID
+                        val imdbID = child.child("imdbID").getValue(String::class.java)
+                        val key    = child.key ?: continue
                         when (status) {
-                            "owned"         -> owned.add(key)
-                            "want_to_watch" -> watchlist.add(key)
-                            "want_to_sell"  -> forSale.add(key)
+                            "owned"         -> owned.add(Pair(key, imdbID))
+                            "want_to_watch" -> watchlist.add(Pair(key, imdbID))
+                            "want_to_sell"  -> forSale.add(Pair(key, imdbID))
                         }
                     }
-                    ownedFilmKeys     = owned
-                    watchlistFilmKeys = watchlist
-                    forSaleFilmKeys   = forSale
+                    ownedFilms     = owned
+                    watchlistFilms = watchlist
+                    forSaleFilms   = forSale
                     isLoading = false
                 }
                 override fun onCancelled(error: DatabaseError) { isLoading = false }
@@ -140,7 +158,7 @@ fun ProfileScreen(onLogout: () -> Unit) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = 90.dp)
         ) {
-            // ── Header ──
+            // ── Header ───────────────────────────────────────────────────────
             item {
                 Box(
                     modifier = Modifier
@@ -157,16 +175,18 @@ fun ProfileScreen(onLogout: () -> Unit) {
                                 .background(brownMid),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(text = initiale, fontSize = 30.sp, fontWeight = FontWeight.Bold, color = beige100)
+                            Text(text = initiale, fontSize = 30.sp,
+                                fontWeight = FontWeight.Bold, color = beige100)
                         }
                         Spacer(modifier = Modifier.height(14.dp))
-                        Text(text = displayName, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = textPrimary)
+                        Text(text = displayName, fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold, color = textPrimary)
                         Spacer(modifier = Modifier.height(4.dp))
                     }
                 }
             }
 
-            // ── Onglets ──
+            // ── Onglets ───────────────────────────────────────────────────────
             item {
                 Row(
                     modifier = Modifier
@@ -188,36 +208,33 @@ fun ProfileScreen(onLogout: () -> Unit) {
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(text = emoji, fontSize = 18.sp)
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "$count",
-                                    fontSize = 16.sp,
+                                Text(text = "$count", fontSize = 16.sp,
                                     fontWeight = FontWeight.ExtraBold,
-                                    color = if (isSelected) beige100 else brownDark
-                                )
-                                Text(
-                                    text = label,
-                                    fontSize = 10.sp,
+                                    color = if (isSelected) beige100 else brownDark)
+                                Text(text = label, fontSize = 10.sp,
                                     fontWeight = FontWeight.Medium,
-                                    color = if (isSelected) beige100.copy(alpha = 0.8f) else textSecondary
-                                )
+                                    color = if (isSelected) beige100.copy(alpha = 0.8f) else textSecondary)
                             }
                         }
                     }
                 }
             }
 
-            // ── Liste ──
+            // ── Liste des films ───────────────────────────────────────────────
             if (isLoading) {
                 item {
-                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp), contentAlignment = Alignment.Center) {
+                    Box(modifier = Modifier.fillMaxWidth().padding(40.dp),
+                        contentAlignment = Alignment.Center) {
                         CircularProgressIndicator(color = brownMid)
                     }
                 }
             } else if (currentList.isEmpty()) {
                 item {
                     Box(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp)
-                            .clip(RoundedCornerShape(16.dp)).background(beige200).padding(32.dp),
+                        modifier = Modifier.fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 8.dp)
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(beige200).padding(32.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -233,47 +250,82 @@ fun ProfileScreen(onLogout: () -> Unit) {
                     }
                 }
             } else {
-                items(currentList) { filmKey ->
+                // ← MODIFIÉ : (filmKey, imdbID) au lieu de filmKey
+                items(currentList) { (filmKey, imdbID) ->
+
+                    // Charge le poster depuis OMDb
+                    var posterUrl by remember(imdbID) { mutableStateOf<String?>(null) }
+                    LaunchedEffect(imdbID) {
+                        if (!imdbID.isNullOrBlank() && imdbID != "N/A") {
+                            try {
+                                val result = omdbApi.getMovieById(imdbId = imdbID, apiKey = "f3553feb")
+                                if (result.posterUrl != "N/A") posterUrl = result.posterUrl
+                            } catch (_: Exception) {}
+                        }
+                    }
+
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp, vertical = 4.dp)
                             .clip(RoundedCornerShape(14.dp))
                             .background(Color.White)
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                        Row(verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)) {
+
+                            // ← NOUVEAU : poster ou emoji
                             Box(
-                                modifier = Modifier.size(36.dp).clip(RoundedCornerShape(8.dp)).background(beige200),
+                                modifier = Modifier
+                                    .size(52.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(beige200),
                                 contentAlignment = Alignment.Center
-                            ) { Text(currentEmoji, fontSize = 16.sp) }
+                            ) {
+                                if (posterUrl != null) {
+                                    AsyncImage(
+                                        model = posterUrl,
+                                        contentDescription = filmKey,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(10.dp))
+                                    )
+                                } else {
+                                    Text(currentEmoji, fontSize = 22.sp)
+                                }
+                            }
+
                             Spacer(modifier = Modifier.width(12.dp))
-                            Text(text = filmKey, fontWeight = FontWeight.Medium, fontSize = 15.sp, color = textPrimary)
+                            Text(text = filmKey, fontWeight = FontWeight.Medium,
+                                fontSize = 14.sp, color = textPrimary)
                         }
+
                         IconButton(
                             onClick = { filmToDelete = Pair(filmKey, tabs[selectedTab].second) },
                             modifier = Modifier.size(36.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Delete,
+                            Icon(imageVector = Icons.Default.Delete,
                                 contentDescription = "Retirer",
                                 tint = errorRed.copy(alpha = 0.6f),
-                                modifier = Modifier.size(18.dp)
-                            )
+                                modifier = Modifier.size(18.dp))
                         }
                     }
                 }
             }
         }
 
-        // ── Bouton Log out ──
+        // ── Bouton Log out ────────────────────────────────────────────────────
         Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(colors = listOf(Color.Transparent, beige100, beige100), startY = 0f, endY = 80f))
+                .background(Brush.verticalGradient(
+                    colors = listOf(Color.Transparent, beige100, beige100),
+                    startY = 0f, endY = 80f))
                 .padding(horizontal = 20.dp, vertical = 16.dp)
         ) {
             OutlinedButton(
