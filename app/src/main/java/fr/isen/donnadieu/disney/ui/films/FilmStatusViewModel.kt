@@ -44,6 +44,20 @@ class FilmStatusViewModel : ViewModel() {
         if (!imdbID.isNullOrBlank() && imdbID != "N/A") {
             ref.child("imdbID").setValue(imdbID)
         }
+
+        // ← AJOUTER CE BLOC
+        if (status == "want_to_sell") {
+            db.getReference("users/$userId/username").get().addOnSuccessListener { snap ->
+                val username = snap.getValue(String::class.java) ?: "Quelqu'un"
+                val event = mapOf(
+                    "filmTitre"      to filmTitre,
+                    "sellerUsername" to username,
+                    "sellerId"       to userId,
+                    "timestamp"      to System.currentTimeMillis()
+                )
+                db.getReference("marketplace_events").push().setValue(event)
+            }
+        }
     }
 
     fun removeFilmStatus(filmTitre: String) {

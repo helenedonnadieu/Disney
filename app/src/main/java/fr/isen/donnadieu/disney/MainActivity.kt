@@ -21,15 +21,21 @@ import androidx.navigation.compose.rememberNavController
 import fr.isen.donnadieu.disney.auth.AuthViewModel
 import fr.isen.donnadieu.disney.auth.LoginScreen
 import fr.isen.donnadieu.disney.auth.RegisterScreen
+import fr.isen.donnadieu.disney.notifications.MarketplaceNotifier
+import fr.isen.donnadieu.disney.notifications.NotificationHelper
 import fr.isen.donnadieu.disney.ui.films.FilmListScreen
 import fr.isen.donnadieu.disney.ui.profile.ProfileScreen
 import fr.isen.donnadieu.disney.ui.theme.DisneyTheme
 import fr.isen.donnadieu.disney.ui.universe.UniverseScreen
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // ← AJOUTER CES DEUX LIGNES
+        NotificationHelper.createChannel(this)
+        MarketplaceNotifier.checkPendingNotifications(this)
         setContent {
             DisneyTheme {
                 val viewModel: AuthViewModel = viewModel()
