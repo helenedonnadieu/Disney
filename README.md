@@ -16,7 +16,7 @@ built with Jetpack Compose and Firebase.
 - Social - See which users own a film or wish to get rid of it
 - Profile - Manage your owned films list
 
-## 📸 Screenshots
+##  Screenshots
 
 | Login | Universe | Film List | Film Detail | Profile |
 |-------|----------|-----------|-------------|---------|
