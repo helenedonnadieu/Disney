@@ -55,7 +55,7 @@ app/src/main/java/fr/isen/donnadieu/disney/
 ##  Getting Started
 
 1. Clone the repository
-git clone https://github.com/donnadieu/disney.git
+git clone https://github.com/helenedonnadieu/Disney.git
 2. Add your `google-services.json` to the `app/` folder
 3. Open in **Android Studio** and run on an emulator or device (API 24+)
 
